@@ -1,5 +1,5 @@
-use git2::{Repository, Signature};
-use serde::Deserialize;
+use git2::{Oid, Repository, Signature};
+use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
 pub struct Git {
@@ -16,6 +16,18 @@ struct GitConfig {
 struct UserConfig {
     email: String,
     name: String,
+}
+
+#[derive(Clone)]
+pub struct EnhancedCommit {
+    pub id: Oid,
+    pub message: String,
+    pub note: Option<Note>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub enum Note {
+    Target { branch: String },
 }
 
 impl Git {
@@ -66,5 +78,52 @@ impl Git {
             repository,
             signature,
         }
+    }
+
+    /// List the commit in a repository and the attached note
+    pub fn list_commits(&self) -> Vec<EnhancedCommit> {
+        let main = "main";
+        // Find the commit of the "main" branch
+        let main_branch = self
+            .repository
+            .find_branch(main, git2::BranchType::Local)
+            .unwrap();
+        let main_commit = main_branch.get().peel_to_commit().unwrap();
+
+        let mut revwalk = self.repository.revwalk().unwrap();
+        revwalk.push_head().unwrap();
+
+        let mut commits = Vec::default();
+
+        for oid in revwalk {
+            let oid = oid.unwrap();
+
+            if oid == main_commit.id() {
+                break;
+            }
+
+            let commit = self.repository.find_commit(oid).unwrap();
+
+            let note: Option<Note> = self
+                .repository
+                .find_note(None, oid)
+                .map(|note| note.message().map(|str| str.to_string()))
+                .ok()
+                .flatten()
+                .and_then(|string| {
+                    // Take the last line
+                    // So that it's compatible with fixup commits
+                    string.split('\n').last().map(ToString::to_string)
+                })
+                .and_then(|str| serde_json::from_str(&str).ok());
+
+            commits.push(EnhancedCommit {
+                id: oid,
+                message: commit.message().unwrap().to_string(),
+                note,
+            });
+        }
+        commits.reverse();
+        commits
     }
 }

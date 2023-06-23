@@ -1,19 +1,6 @@
 use git2::{Oid, Repository, Signature};
-use serde::{Deserialize, Serialize};
 
-use crate::parser::list_commits;
-
-#[derive(Clone)]
-pub struct EnhancedCommit {
-    pub id: Oid,
-    pub message: String,
-    pub note: Option<Note>,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-pub enum Note {
-    Target { branch: String },
-}
+use crate::git::{EnhancedCommit, Git, Note};
 
 /// Action is a super set of Note
 #[derive(Clone)]
@@ -54,26 +41,26 @@ pub fn process_instructions(
 }
 
 /// Apply the notes
-pub fn apply_notes(repository: &Repository, _signature: &Signature) {
-    let commits = list_commits(repository);
+pub fn apply_notes(git: &Git) {
+    let commits = git.list_commits();
 
     for commit in commits {
         let EnhancedCommit { id, note, .. } = commit;
         match note {
             None => (),
             Some(Note::Target { branch }) => {
-                let commit = repository.find_commit(id).unwrap();
+                let commit = git.repository.find_commit(id).unwrap();
 
-                let _ = repository.branch(&branch, &commit, true).unwrap();
+                let _ = git.repository.branch(&branch, &commit, true).unwrap();
             }
         }
     }
 }
 
 /// Push the branches
-pub fn push_branches(repository: &Repository, _signature: &Signature) {
-    let commits = list_commits(repository);
-    let mut remote = repository.find_remote("origin").unwrap();
+pub fn push_branches(git: &Git) {
+    let commits = git.list_commits();
+    let mut remote = git.repository.find_remote("origin").unwrap();
 
     for commit in commits {
         let EnhancedCommit { note, .. } = commit;

@@ -3,7 +3,7 @@ use crate::core::process_instructions;
 use crate::core::push_branches;
 use crate::parser::commits_to_string;
 use git::Git;
-use parser::{instruction_from_string, list_commits};
+use parser::instruction_from_string;
 use std::process::Command;
 
 mod core;
@@ -11,12 +11,9 @@ mod git;
 mod parser;
 
 fn main() {
-    let Git {
-        repository,
-        signature,
-    } = Git::open(".");
+    let git = Git::open(".");
 
-    let commits = list_commits(&repository);
+    let commits = git.list_commits();
     let output = commits_to_string(commits);
 
     std::fs::write("/tmp/yggit", output).unwrap();
@@ -30,11 +27,11 @@ fn main() {
 
     let instructions = instruction_from_string(file);
 
-    process_instructions(&repository, &signature, instructions);
+    process_instructions(&git.repository, &git.signature, instructions);
 
     // updates branches
-    apply_notes(&repository, &signature);
+    apply_notes(&git);
 
     // push
-    push_branches(&repository, &signature);
+    push_branches(&git);
 }

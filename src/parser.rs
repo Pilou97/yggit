@@ -1,53 +1,11 @@
 // Git related
 
-use git2::{Oid, Repository};
+use git2::Oid;
 
-use crate::core::{Action, EnhancedCommit, Instruction, Note};
-
-/// List the commit in a repository and the following note
-pub fn list_commits(repository: &Repository) -> Vec<EnhancedCommit> {
-    let main = "main";
-    // Find the commit of the "main" branch
-    let main_branch = repository
-        .find_branch(main, git2::BranchType::Local)
-        .unwrap();
-    let main_commit = main_branch.get().peel_to_commit().unwrap();
-
-    let mut revwalk = repository.revwalk().unwrap();
-    revwalk.push_head().unwrap();
-
-    let mut commits = Vec::default();
-
-    for oid in revwalk {
-        let oid = oid.unwrap();
-
-        if oid == main_commit.id() {
-            break;
-        }
-
-        let commit = repository.find_commit(oid).unwrap();
-
-        let note: Option<Note> = repository
-            .find_note(None, oid)
-            .map(|note| note.message().map(|str| str.to_string()))
-            .ok()
-            .flatten()
-            .and_then(|string| {
-                // Take the last line
-                // So that it's compatible with fixup commits
-                string.split('\n').last().map(ToString::to_string)
-            })
-            .and_then(|str| serde_json::from_str(&str).ok());
-
-        commits.push(EnhancedCommit {
-            id: oid,
-            message: commit.message().unwrap().to_string(),
-            note,
-        });
-    }
-    commits.reverse();
-    commits
-}
+use crate::{
+    core::{Action, Instruction},
+    git::{EnhancedCommit, Note},
+};
 
 pub fn commits_to_string(commits: Vec<EnhancedCommit>) -> String {
     let mut output = String::default();

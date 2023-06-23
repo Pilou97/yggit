@@ -126,4 +126,21 @@ impl Git {
         commits.reverse();
         commits
     }
+
+    /// Push force a branch
+    pub fn push_force(&self, branch: &str) {
+        let fetch_refname = format!("refs/heads/{}", branch);
+        let mut remote = self
+            .repository
+            .find_remote("origin")
+            .expect("Cannot find origin");
+
+        remote
+            .connect(git2::Direction::Push)
+            .expect("Cannot connect to remote in Push direction");
+
+        remote
+            .push(&[format!("+{}", fetch_refname)], None)
+            .expect("Push force failed");
+    }
 }

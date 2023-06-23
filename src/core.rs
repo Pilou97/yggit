@@ -60,7 +60,6 @@ pub fn apply_notes(git: &Git) {
 /// Push the branches
 pub fn push_branches(git: &Git) {
     let commits = git.list_commits();
-    let mut remote = git.repository.find_remote("origin").unwrap();
 
     for commit in commits {
         let EnhancedCommit { note, .. } = commit;
@@ -69,9 +68,7 @@ pub fn push_branches(git: &Git) {
             Some(Note::Target {
                 branch: branch_name,
             }) => {
-                let fetch_refname = format!("refs/heads/{}", branch_name);
-                remote.connect(git2::Direction::Push).unwrap();
-                remote.push(&[format!("+{}", fetch_refname)], None).unwrap();
+                git.push_force(&branch_name);
 
                 // TODO force with lease
                 // Check if the upstream has changed compared to local

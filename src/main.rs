@@ -3,7 +3,6 @@ use crate::core::process_instructions;
 use crate::core::push_branches;
 use crate::parser::commits_to_string;
 use git::Git;
-use git2::Signature;
 use parser::{instruction_from_string, list_commits};
 use std::process::Command;
 
@@ -12,9 +11,10 @@ mod git;
 mod parser;
 
 fn main() {
-    let Git { repository } = Git::open(".");
-
-    let signature = Signature::now("Pierre-Louis", "pierrelouis.dubois@tutanota.com").unwrap();
+    let Git {
+        repository,
+        signature,
+    } = Git::open(".");
 
     let commits = list_commits(&repository);
     let output = commits_to_string(commits);

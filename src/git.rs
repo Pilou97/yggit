@@ -144,4 +144,11 @@ impl Git {
             .push(&[format!("+{}", fetch_refname)], None)
             .expect("Push force failed");
     }
+
+    /// Delete a note
+    pub fn delete_note(&self, oid: &Oid) {
+        let _ = self
+            .repository
+            .note_delete(*oid, None, &self.signature, &self.signature);
+    }
 }

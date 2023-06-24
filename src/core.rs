@@ -1,6 +1,5 @@
-use git2::{Oid, Repository, Signature};
-
 use crate::git::{EnhancedCommit, Git, Note};
+use git2::Oid;
 
 /// Action is a super set of Note
 #[derive(Clone)]
@@ -16,11 +15,7 @@ pub struct Instruction {
 
 // Process instruction
 // updates the notes
-pub fn process_instructions(
-    repository: &Repository,
-    signature: &Signature,
-    instructions: Vec<Instruction>,
-) {
+pub fn process_instructions(git: &Git, instructions: Vec<Instruction>) {
     for instruction in instructions {
         let Instruction { id: oid, action } = instruction;
 
@@ -30,11 +25,13 @@ pub fn process_instructions(
                 let note = Note::Target { branch };
                 let Ok(note) = serde_json::to_string(&note) else {continue};
 
-                let _ = repository.note(signature, signature, None, oid, &note, true);
+                let _ = git
+                    .repository
+                    .note(&git.signature, &git.signature, None, oid, &note, true);
             }
             None => {
                 // delete note
-                let _ = repository.note_delete(oid, None, signature, signature);
+                git.delete_note(&oid);
             }
         }
     }

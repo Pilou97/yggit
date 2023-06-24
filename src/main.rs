@@ -27,7 +27,7 @@ fn main() {
 
     let instructions = instruction_from_string(file);
 
-    process_instructions(&git.repository, &git.signature, instructions);
+    process_instructions(&git, instructions);
 
     // updates branches
     apply_notes(&git);

@@ -16,14 +16,16 @@ fn main() {
     let commits = git.list_commits();
     let output = commits_to_string(commits);
 
-    std::fs::write("/tmp/yggit", output).unwrap();
+    let file = "/tmp/yggit";
+
+    std::fs::write(file, output).unwrap();
 
     let output = Command::new("nvim")
-        .arg("/tmp/yggit")
+        .arg(file)
         .status()
         .expect("Failed to execute command");
     let true = output.success() else {return;};
-    let file = std::fs::read_to_string("/tmp/yggit").unwrap();
+    let file = std::fs::read_to_string(file).unwrap();
 
     let instructions = instruction_from_string(file);
 

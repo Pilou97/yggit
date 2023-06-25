@@ -1,4 +1,7 @@
-use git2::{Branch, Cred, CredentialType, Error, Oid, RemoteCallbacks, Repository, Signature, FetchOptions};
+use git2::{
+    Branch, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions, RemoteCallbacks,
+    Repository, Signature,
+};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
@@ -216,9 +219,9 @@ impl Git {
             }
             (Some(_), None, None) => Ok(()),
             (Some(local_commit), None, Some(mut reference)) => {
-        reference
-            .set_target(local_commit.id(), "revert fetch")
-            .expect("revert fetch error");
+                reference
+                    .set_target(local_commit.id(), "revert fetch")
+                    .expect("revert fetch error");
 
                 println!("reference and remote should exists");
                 Err(())
@@ -231,12 +234,12 @@ impl Git {
                 reference
                     .set_target(local_commit.id(), "revert fetch")
                     .expect("revert fetch error");
-        if local_commit.id() != remote_commit.id() {
-            Err(())
-        } else {
-            Ok(())
-        }
-    }
+                if local_commit.id() != remote_commit.id() {
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 
@@ -248,13 +251,16 @@ impl Git {
             .find_remote("origin")
             .expect("Cannot find origin");
 
+        let mut push_options = PushOptions::new();
+        push_options.remote_callbacks(self.remote_callback());
+
         remote
-            .connect(git2::Direction::Push)
+            .connect_auth(git2::Direction::Push, Some(self.remote_callback()), None)
             .expect("Cannot connect to remote in Push direction");
 
         // The + character means that the branch is forced pushed
         remote
-            .push(&[format!("+{}", fetch_refname)], None)
+            .push(&[format!("+{}", fetch_refname)], Some(&mut push_options))
             .expect("Push force failed");
     }
 

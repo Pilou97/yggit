@@ -1,4 +1,4 @@
-use git2::{Branch, Cred, CredentialType, Error, Oid, RemoteCallbacks, Repository, Signature};
+use git2::{Branch, Cred, CredentialType, Error, Oid, RemoteCallbacks, Repository, Signature, FetchOptions};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
@@ -178,34 +178,65 @@ impl Git {
         // Get the head of this branch
         let local_commit = repository
             .find_reference(&reference)
-            .expect("reference not found")
-            .peel_to_commit()
-            .expect("should be a commit");
+            .ok()
+            .and_then(|reference| reference.peel_to_commit().ok());
+
         // Fetch the branch
+        let mut options = FetchOptions::new();
+        options.remote_callbacks(self.remote_callback());
+
         remote
-            .fetch(&[branch], None, Some("fetch branch"))
+            .fetch(&[branch], Some(&mut options), Some("fetch branch"))
             .expect("Fetching repository");
+
         // Get the new head
         let remote_commit = repository
             .find_reference(&reference)
-            .expect("reference not found")
-            .peel_to_commit()
-            .expect("should be a commit");
+            .ok()
+            .and_then(|reference| reference.peel_to_commit().ok());
 
         // Get the reference object to the reference
-        let mut reference = repository
-            .find_reference(&reference)
-            .expect("reference not found");
+        let reference = repository.find_reference(&reference).ok();
 
         // Change the reference to the old commit to revert the fetch
+
+        match (local_commit, remote_commit, reference) {
+            (None, None, None) => Ok(()),
+            (None, None, Some(_)) => {
+                println!("remote and reference should exists possible");
+                Err(())
+            }
+            (None, Some(_), None) => {
+                println!("odd");
+                Err(())
+            }
+            (None, Some(_), Some(_)) => {
+                println!("No local commits, but remote one");
+                Err(())
+            }
+            (Some(_), None, None) => Ok(()),
+            (Some(local_commit), None, Some(mut reference)) => {
         reference
             .set_target(local_commit.id(), "revert fetch")
             .expect("revert fetch error");
 
+                println!("reference and remote should exists");
+                Err(())
+            }
+            (Some(_), Some(_), None) => {
+                println!("local commit exists, remote too, but no references...");
+                Ok(())
+            }
+            (Some(local_commit), Some(remote_commit), Some(mut reference)) => {
+                reference
+                    .set_target(local_commit.id(), "revert fetch")
+                    .expect("revert fetch error");
         if local_commit.id() != remote_commit.id() {
             Err(())
         } else {
             Ok(())
+        }
+    }
         }
     }
 

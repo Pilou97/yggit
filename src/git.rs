@@ -1,4 +1,4 @@
-use git2::{Oid, Repository, Signature};
+use git2::{Branch, Oid, Repository, Signature};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
@@ -80,14 +80,31 @@ impl Git {
         }
     }
 
+    /// Returns the main branch of the repository
+    ///
+    /// The branch can be either main or master
+    /// If main exists it will be returned as the main branch
+    /// If main does not exist, master will be returned as the main branch
+    pub fn main_branch(&self) -> Branch {
+        let main = "main";
+        let master = "master";
+
+        let main_branch = self.repository.find_branch(main, git2::BranchType::Local);
+
+        match main_branch {
+            Ok(main) => main,
+            Err(_) => self
+                .repository
+                .find_branch(master, git2::BranchType::Local)
+                .expect("main branch not found"),
+        }
+    }
+
     /// List the commit in a repository and the attached note
     pub fn list_commits(&self) -> Vec<EnhancedCommit> {
-        let main = "main";
         // Find the commit of the "main" branch
-        let main_branch = self
-            .repository
-            .find_branch(main, git2::BranchType::Local)
-            .unwrap();
+        let main_branch = self.main_branch();
+
         let main_commit = main_branch.get().peel_to_commit().unwrap();
 
         let mut revwalk = self.repository.revwalk().unwrap();

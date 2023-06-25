@@ -1,4 +1,4 @@
-use git2::{Branch, Oid, Repository, Signature};
+use git2::{Branch, Cred, CredentialType, Error, Oid, RemoteCallbacks, Repository, Signature};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
@@ -142,6 +142,25 @@ impl Git {
         }
         commits.reverse();
         commits
+    }
+
+    /// The callback to authenticate users
+    ///
+    /// For now, it only supports ssh
+    fn auth_callback(
+        &self,
+    ) -> impl FnMut(&str, Option<&str>, CredentialType) -> Result<Cred, Error> {
+        |_, _, _| {
+            let path = Path::new("/home/pilou/.ssh/id_ed25519");
+            Cred::ssh_key("git", None, path, None)
+        }
+    }
+
+    /// Returns the remote callback
+    fn remote_callback(&self) -> RemoteCallbacks {
+        let mut remote_callbacks = RemoteCallbacks::new();
+        remote_callbacks.credentials(self.auth_callback());
+        remote_callbacks
     }
 
     /// Check if the remote commit is the same as the local one

@@ -127,6 +127,52 @@ impl Git {
         commits
     }
 
+    /// Check if the remote commit is the same as the local one
+    /// Get the head of remote/{branch}
+    /// Fetch
+    /// Get the new head of remote/{branch}
+    /// Check if the commits matched or not
+    pub fn with_lease(&self, branch: &str) -> Result<(), ()> {
+        let Self { repository, .. } = self;
+        // Get the remote
+        let mut remote = repository.find_remote("origin").expect("remote not found");
+        // Get the reference of the branch
+        let reference = format!("refs/remotes/origin/{}", branch);
+
+        // Get the head of this branch
+        let local_commit = repository
+            .find_reference(&reference)
+            .expect("reference not found")
+            .peel_to_commit()
+            .expect("should be a commit");
+        // Fetch the branch
+        remote
+            .fetch(&[branch], None, Some("fetch branch"))
+            .expect("Fetching repository");
+        // Get the new head
+        let remote_commit = repository
+            .find_reference(&reference)
+            .expect("reference not found")
+            .peel_to_commit()
+            .expect("should be a commit");
+
+        // Get the reference object to the reference
+        let mut reference = repository
+            .find_reference(&reference)
+            .expect("reference not found");
+
+        // Change the reference to the old commit to revert the fetch
+        reference
+            .set_target(local_commit.id(), "revert fetch")
+            .expect("revert fetch error");
+
+        if local_commit.id() != remote_commit.id() {
+            Err(())
+        } else {
+            Ok(())
+        }
+    }
+
     /// Push force a branch
     pub fn push_force(&self, branch: &str) {
         let fetch_refname = format!("refs/heads/{}", branch);

@@ -8,17 +8,25 @@ use std::{fs::File, io::Read, path::Path};
 pub struct Git {
     pub repository: Repository,
     pub signature: Signature<'static>,
+    config: GitConfig,
 }
 
 #[derive(Deserialize, Debug)]
 struct GitConfig {
     user: UserConfig,
+    yggit: Yggit,
 }
 
 #[derive(Deserialize, Debug)]
 struct UserConfig {
     email: String,
     name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct Yggit {
+    #[serde(rename = "privateKey")]
+    private_key: String,
 }
 
 #[derive(Clone)]
@@ -80,6 +88,7 @@ impl Git {
         Git {
             repository,
             signature,
+            config: gitconfig,
         }
     }
 
@@ -153,8 +162,9 @@ impl Git {
     fn auth_callback(
         &self,
     ) -> impl FnMut(&str, Option<&str>, CredentialType) -> Result<Cred, Error> {
-        |_, _, _| {
-            let path = Path::new("/home/pilou/.ssh/id_ed25519");
+        let private_key = self.config.yggit.private_key.clone();
+        move |_, _, _| {
+            let path = Path::new(&private_key);
             Cred::ssh_key("git", None, path, None)
         }
     }

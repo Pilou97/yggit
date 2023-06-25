@@ -54,23 +54,35 @@ pub fn apply_notes(git: &Git) {
     }
 }
 
-/// Push the branches
+/// Push force the branches with lease
 pub fn push_branches(git: &Git) {
     let commits = git.list_commits();
 
-    for commit in commits {
+    // Check all the branch
+    for commit in &commits {
         let EnhancedCommit { note, .. } = commit;
         match note {
             None => (),
             Some(Note::Target {
                 branch: branch_name,
             }) => {
-                git.push_force(&branch_name);
+                let Ok(()) = git.with_lease(branch_name) else {
+                    println!("cannot push {}", branch_name);
+                    return;
+                };
+            }
+        }
+    }
 
-                // TODO force with lease
-                // Check if the upstream has changed compared to local
-                // If so do not push
-                // else push (with lease)
+    // Push all the branch
+    for commit in &commits {
+        let EnhancedCommit { note, .. } = commit;
+        match note {
+            None => (),
+            Some(Note::Target {
+                branch: branch_name,
+            }) => {
+                git.push_force(branch_name);
             }
         }
     }

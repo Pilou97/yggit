@@ -30,6 +30,10 @@ pub fn instruction_from_string(string: String) -> Vec<Instruction> {
     let mut before = None;
     let mut instructions = Vec::default();
     for line in lines {
+        if line.starts_with('#') {
+            continue;
+        }
+
         let current_line = match line.starts_with("->") {
             true => {
                 let branch = line.chars().skip(2).collect::<String>().trim().to_string();

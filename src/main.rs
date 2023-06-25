@@ -18,6 +18,20 @@ fn main() {
 
     let file = "/tmp/yggit";
 
+    let comments = r#"
+# Here is how to use yggit
+# 
+# Commands:
+# -> <branch> add a branch to the above commit
+# 
+# What happens next?
+#  - All branches are pushed
+#
+# It's not a rebase, you can't edit commits nor reorder them
+# "#;
+
+    let output = format!("{}\n{}", output, comments);
+
     std::fs::write(file, output).unwrap();
 
     let output = Command::new("nvim")

@@ -1,6 +1,6 @@
 use git2::{
-    Branch, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions, RemoteCallbacks,
-    Repository, Signature,
+    Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions,
+    RemoteCallbacks, Repository, Signature,
 };
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
@@ -102,7 +102,7 @@ impl Git {
         let branches = ["main", "master"];
 
         for branch in branches {
-            let branch = self.repository.find_branch(branch, git2::BranchType::Local);
+            let branch = self.repository.find_branch(branch, BranchType::Local);
             if let Ok(branch) = branch {
                 return Some(branch);
             }

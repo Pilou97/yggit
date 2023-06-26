@@ -132,33 +132,8 @@ impl Git {
                 break;
             }
 
-            let commit = self.repository.find_commit(oid).unwrap();
-
-            let note: Option<Note> = self
-                .repository
-                .find_note(None, oid)
-                .map(|note| note.message().map(|str| str.to_string()))
-                .ok()
-                .flatten()
-                .and_then(|string| {
-                    // Take the last line
-                    // So that it's compatible with fixup commits
-                    string.split('\n').last().map(ToString::to_string)
-                })
-                .and_then(|str| serde_json::from_str(&str).ok());
-
-            let message_iter = commit.message().unwrap().to_string();
-            let mut message_iter = message_iter.splitn(2, '\n');
-
-            let title = message_iter.next().unwrap().to_string();
-            let description = message_iter.next().map(str::to_string);
-
-            commits.push(EnhancedCommit {
-                id: oid,
-                title,
-                description,
-                note,
-            });
+            let Some(commit) = self.find_commit(oid) else {continue;};
+            commits.push(commit);
         }
         commits.reverse();
         commits
@@ -287,5 +262,40 @@ impl Git {
         let _ = self
             .repository
             .note_delete(*oid, None, &self.signature, &self.signature);
+    }
+
+    /// Retrieve a commit with its node
+    pub fn find_commit(&self, oid: Oid) -> Option<EnhancedCommit> {
+        // Get the commit
+        let commit = self.repository.find_commit(oid).ok()?;
+        // Get the associated note
+        let note: Option<Note> = self
+            .repository
+            .find_note(None, oid)
+            .map(|note| note.message().map(|str| str.to_string()))
+            .ok()
+            .flatten()
+            .and_then(|string| {
+                // Take the last line
+                // So that it's compatible with merging fixup commits
+                // When two commits are merged, the note are also merged
+                // The note of the most recent commit is taking into account then
+                string.split('\n').last().map(ToString::to_string)
+            })
+            .and_then(|str| serde_json::from_str(&str).ok());
+
+        // Get the title and the description
+        let mut message = commit.message().unwrap_or_default().splitn(2, '\n');
+        // Title is on the first line of the message
+        let title = message.next().unwrap_or_default().to_string();
+        // Remaining lines are for the description
+        let description = message.next().map(str::to_string);
+
+        Some(EnhancedCommit {
+            id: oid,
+            title,
+            description,
+            note,
+        })
     }
 }

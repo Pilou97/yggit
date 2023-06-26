@@ -32,7 +32,8 @@ struct Yggit {
 #[derive(Clone)]
 pub struct EnhancedCommit {
     pub id: Oid,
-    pub message: String,
+    pub title: String,
+    pub description: Option<String>,
     pub note: Option<Note>,
 }
 
@@ -146,9 +147,16 @@ impl Git {
                 })
                 .and_then(|str| serde_json::from_str(&str).ok());
 
+            let message_iter = commit.message().unwrap().to_string();
+            let mut message_iter = message_iter.splitn(2, '\n');
+
+            let title = message_iter.next().unwrap().to_string();
+            let description = message_iter.next().map(str::to_string);
+
             commits.push(EnhancedCommit {
                 id: oid,
-                message: commit.message().unwrap().to_string(),
+                title,
+                description,
                 note,
             });
         }

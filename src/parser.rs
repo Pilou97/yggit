@@ -10,7 +10,7 @@ use crate::{
 pub fn commits_to_string(commits: Vec<EnhancedCommit>) -> String {
     let mut output = String::default();
     for commit in commits {
-        output = format!("{}{} {}\n", output, commit.id, commit.message.trim());
+        output = format!("{}{} {}\n", output, commit.id, commit.title);
         if let Some(Note::Target { branch }) = commit.note {
             output = format!("{}-> {}\n", output, branch);
         }

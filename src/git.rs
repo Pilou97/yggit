@@ -264,6 +264,21 @@ impl Git {
             .note_delete(*oid, None, &self.signature, &self.signature);
     }
 
+    /// Set the note of a given oid
+    ///
+    /// The note will be serialize to json format
+    pub fn set_note<N>(&self, oid: Oid, note: N) -> Result<(), ()>
+    where
+        N: Serialize,
+    {
+        let Ok(note) = serde_json::to_string(&note) else {return Err(())};
+
+        self.repository
+            .note(&self.signature, &self.signature, None, oid, &note, true)
+            .map(|_| ())
+            .map_err(|_| ())
+    }
+
     /// Retrieve a commit with its node
     pub fn find_commit(&self, oid: Oid) -> Option<EnhancedCommit> {
         // Get the commit

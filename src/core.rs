@@ -23,11 +23,7 @@ pub fn process_instructions(git: &Git, instructions: Vec<Instruction>) {
             Some(Action::Target { branch }) => {
                 // add note
                 let note = Note::Target { branch };
-                let Ok(note) = serde_json::to_string(&note) else {continue};
-
-                let _ = git
-                    .repository
-                    .note(&git.signature, &git.signature, None, oid, &note, true);
+                let Ok(()) = git.set_note(oid, note) else {continue;};
             }
             None => {
                 // delete note

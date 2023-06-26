@@ -313,4 +313,14 @@ impl Git {
             note,
         })
     }
+
+    /// Set the head of the given branch to the given commit
+    pub fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), ()> {
+        let Ok(commit) = self.repository.find_commit(oid) else {return Err(())};
+
+        self.repository
+            .branch(branch, &commit, true)
+            .map(|_| ())
+            .map_err(|_| ())
+    }
 }

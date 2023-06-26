@@ -42,9 +42,7 @@ pub fn apply_notes(git: &Git) {
         match note {
             None => (),
             Some(Note::Target { branch }) => {
-                let commit = git.repository.find_commit(id).unwrap();
-
-                let _ = git.repository.branch(&branch, &commit, true).unwrap();
+                git.set_branch_to_commit(&branch, id).unwrap();
             }
         }
     }

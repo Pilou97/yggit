@@ -98,25 +98,22 @@ impl Git {
     /// The branch can be either main or master
     /// If main exists it will be returned as the main branch
     /// If main does not exist, master will be returned as the main branch
-    pub fn main_branch(&self) -> Branch {
-        let main = "main";
-        let master = "master";
+    pub fn main_branch(&self) -> Option<Branch> {
+        let branches = ["main", "master"];
 
-        let main_branch = self.repository.find_branch(main, git2::BranchType::Local);
-
-        match main_branch {
-            Ok(main) => main,
-            Err(_) => self
-                .repository
-                .find_branch(master, git2::BranchType::Local)
-                .expect("main branch not found"),
+        for branch in branches {
+            let branch = self.repository.find_branch(branch, git2::BranchType::Local);
+            if let Ok(branch) = branch {
+                return Some(branch);
+            }
         }
+        None
     }
 
     /// List the commit in a repository and the attached note
     pub fn list_commits(&self) -> Vec<EnhancedCommit> {
         // Find the commit of the "main" branch
-        let main_branch = self.main_branch();
+        let main_branch = self.main_branch().expect("main/master to exist");
 
         let main_commit = main_branch.get().peel_to_commit().unwrap();
 

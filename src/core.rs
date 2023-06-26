@@ -38,13 +38,12 @@ pub fn apply_notes(git: &Git) {
     let commits = git.list_commits();
 
     for commit in commits {
-        let EnhancedCommit { id, note, .. } = commit;
-        match note {
-            None => (),
-            Some(Note::Target { branch }) => {
-                git.set_branch_to_commit(&branch, id).unwrap();
-            }
-        }
+        let EnhancedCommit {
+            id,
+            note: Some(Note::Target { branch }),
+            ..
+        } = commit else {continue;};
+        git.set_branch_to_commit(&branch, id).unwrap();
     }
 }
 
@@ -54,30 +53,19 @@ pub fn push_branches(git: &Git) {
 
     // Check all the branch
     for commit in &commits {
-        let EnhancedCommit { note, .. } = commit;
-        match note {
-            None => (),
-            Some(Note::Target {
-                branch: branch_name,
-            }) => {
-                let Ok(()) = git.with_lease(branch_name) else {
-                    println!("cannot push {}", branch_name);
-                    return;
-                };
+        let EnhancedCommit { note: Some(Note::Target { branch }), .. } = commit else {continue;};
+        match git.with_lease(branch) {
+            Ok(_) => (),
+            Err(_) => {
+                println!("cannot push {}", branch);
+                return;
             }
         }
     }
 
     // Push all the branch
     for commit in &commits {
-        let EnhancedCommit { note, .. } = commit;
-        match note {
-            None => (),
-            Some(Note::Target {
-                branch: branch_name,
-            }) => {
-                git.push_force(branch_name);
-            }
-        }
+        let EnhancedCommit { note: Some(Note::Target { branch }), .. } = commit else {continue;};
+        git.push_force(branch);
     }
 }

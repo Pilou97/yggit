@@ -3,7 +3,7 @@ use git2::{
     RemoteCallbacks, Repository, Signature,
 };
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Read, path::Path};
+use std::{fs::File, io::Read, path::Path, process::Command};
 
 pub struct Git {
     pub repository: Repository,
@@ -15,6 +15,7 @@ pub struct Git {
 struct GitConfig {
     user: UserConfig,
     yggit: Yggit,
+    core: CoreConfig,
 }
 
 #[derive(Deserialize, Debug)]
@@ -27,6 +28,11 @@ struct UserConfig {
 struct Yggit {
     #[serde(rename = "privateKey")]
     private_key: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct CoreConfig {
+    editor: String,
 }
 
 #[derive(Clone)]
@@ -340,5 +346,16 @@ impl Git {
             .branch(branch, &commit, true)
             .map(|_| ())
             .map_err(|_| ())
+    }
+
+    /// Open the given file with the user's editor and returns the content of this file
+    pub fn edit_file(&self, file_path: &str) -> Result<String, ()> {
+        let output = Command::new(&self.config.core.editor)
+            .arg(file_path)
+            .status()
+            .expect("Failed to execute command");
+        let true = output.success() else {return Err(());};
+        let content = std::fs::read_to_string(file_path).unwrap();
+        Ok(content)
     }
 }

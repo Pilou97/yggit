@@ -4,7 +4,6 @@ use crate::{
     parser::{commits_to_string, instruction_from_string},
 };
 use clap::Args;
-use std::process::Command;
 
 use super::Execute;
 
@@ -30,20 +29,14 @@ impl Execute for Push {
         let commits = git.list_commits();
         let output = commits_to_string(commits);
 
-        let file = "/tmp/yggit";
+        let file_path = "/tmp/yggit";
 
         let output = format!("{}\n{}", output, COMMENTS);
+        std::fs::write(file_path, output).unwrap();
 
-        std::fs::write(file, output).unwrap();
+        let content = git.edit_file(file_path)?;
 
-        let output = Command::new("nvim")
-            .arg(file)
-            .status()
-            .expect("Failed to execute command");
-        let true = output.success() else {return Ok(());};
-        let file = std::fs::read_to_string(file).unwrap();
-
-        let instructions = instruction_from_string(file);
+        let instructions = instruction_from_string(content);
 
         process_instructions(&git, instructions);
 

@@ -1,5 +1,3 @@
-use std::process::Command;
-
 use clap::Args;
 
 use crate::{git::Git, parser::commits_to_string};
@@ -19,14 +17,11 @@ impl Execute for Show {
         let commits = git.list_commits();
         let output = commits_to_string(commits);
 
-        let file = "/tmp/yggit";
+        let file_path = "/tmp/yggit";
         let output = format!("{}\n{}", output, COMMENTS);
-        std::fs::write(file, output).unwrap();
+        std::fs::write(file_path, output).unwrap();
 
-        Command::new("nvim")
-            .arg(file)
-            .status()
-            .expect("Failed to execute command");
+        git.edit_file(file_path)?;
 
         Ok(())
     }

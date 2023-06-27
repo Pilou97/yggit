@@ -156,12 +156,26 @@ impl Git {
         remote_callbacks
     }
 
-    /// Check if the remote commit is the same as the local one
-    /// Get the head of remote/{branch}
-    /// Fetch
-    /// Get the new head of remote/{branch}
-    /// Check if the commits matched or not
-    pub fn with_lease(&self, branch: &str) -> Result<(), ()> {
+    /// Returns the local id of the head of origin/{branch}
+    pub fn find_local_remote_head(&self, branch: &str) -> Option<Oid> {
+        let Self { repository, .. } = self;
+        // Get the reference of the branch
+        let reference = format!("refs/remotes/origin/{}", branch);
+
+        // Get the head of this branch
+        repository
+            .find_reference(&reference)
+            .ok()
+            .and_then(|reference| reference.peel_to_commit().ok())
+            .map(|commit| commit.id())
+    }
+
+    /// Returns the remote head of origin/{branch}
+    ///
+    /// It will fetch the repository
+    /// Get the head
+    /// Revert the fetch
+    pub fn find_remote_head(&self, branch: &str) -> Option<Oid> {
         let Self { repository, .. } = self;
         // Get the remote
         let mut remote = repository.find_remote("origin").expect("remote not found");
@@ -194,43 +208,50 @@ impl Git {
         // Change the reference to the old commit to revert the fetch
 
         match (local_commit, remote_commit, reference) {
-            (None, None, None) => Ok(()),
+            (None, None, None) => None,
             (None, None, Some(_)) => {
                 println!("remote and reference should exists possible");
-                Err(())
+                None
             }
             (None, Some(_), None) => {
                 println!("odd");
-                Err(())
+                None
             }
-            (None, Some(_), Some(_)) => {
+            (None, Some(remote_commit), Some(_)) => {
                 println!("No local commits, but remote one");
-                Err(())
+                Some(remote_commit.id())
             }
-            (Some(_), None, None) => Ok(()),
+            (Some(_), None, None) => None,
             (Some(local_commit), None, Some(mut reference)) => {
                 reference
                     .set_target(local_commit.id(), "revert fetch")
                     .expect("revert fetch error");
-
                 println!("reference and remote should exists");
-                Err(())
+                None
             }
-            (Some(_), Some(_), None) => {
+            (Some(_), Some(remote_commit), None) => {
                 println!("local commit exists, remote too, but no references...");
-                Ok(())
+                Some(remote_commit.id())
             }
             (Some(local_commit), Some(remote_commit), Some(mut reference)) => {
                 reference
                     .set_target(local_commit.id(), "revert fetch")
                     .expect("revert fetch error");
-                if local_commit.id() != remote_commit.id() {
-                    Err(())
-                } else {
-                    Ok(())
-                }
+                Some(remote_commit.id())
             }
         }
+    }
+
+    ///  Returns the commit to head of branch and head of branch/origin
+    pub fn head_of(&self, branch: &str) -> Option<Oid> {
+        let local_reference_name = format!("refs/heads/{}", branch);
+
+        // Get the local commit
+        self.repository
+            .find_reference(&local_reference_name)
+            .ok()
+            .and_then(|reference| reference.peel_to_commit().ok())
+            .map(|commit| commit.id())
     }
 
     /// Push force a branch

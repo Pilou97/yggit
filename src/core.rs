@@ -51,21 +51,26 @@ pub fn apply_notes(git: &Git) {
 pub fn push_branches(git: &Git) {
     let commits = git.list_commits();
 
-    // Check all the branch
+    // Push all branch, starting by the first one
+    // When a branch cannot be pushed it stops
     for commit in &commits {
         let EnhancedCommit { note: Some(Note::Target { branch }), .. } = commit else {continue;};
-        match git.with_lease(branch) {
-            Ok(_) => (),
-            Err(_) => {
-                println!("cannot push {}", branch);
-                return;
-            }
-        }
-    }
+        let local_remote_commit = git.find_local_remote_head(branch);
+        let remote_commit = git.find_remote_head(branch);
+        let local_commit = git.head_of(branch);
 
-    // Push all the branch
-    for commit in &commits {
-        let EnhancedCommit { note: Some(Note::Target { branch }), .. } = commit else {continue;};
+        if local_remote_commit != remote_commit {
+            println!("cannot push {}", branch);
+            return;
+        }
+
+        if local_commit == remote_commit {
+            println!("{} is up to date", branch);
+            continue;
+        }
+
+        println!("pushing {}", branch);
         git.push_force(branch);
+        println!("\r{} pushed", branch);
     }
 }

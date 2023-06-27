@@ -4,13 +4,13 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct GitConfig {
-    pub user: UserConfig,
+    pub user: User,
     pub yggit: Yggit,
-    pub core: CoreConfig,
+    pub core: Core,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct UserConfig {
+pub struct User {
     pub email: String,
     pub name: String,
 }
@@ -22,7 +22,7 @@ pub struct Yggit {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct CoreConfig {
+pub struct Core {
     pub editor: String,
 }
 

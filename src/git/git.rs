@@ -3,36 +3,14 @@ use git2::{
     RemoteCallbacks, Repository, Signature,
 };
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Read, path::Path, process::Command};
+use std::{path::Path, process::Command};
+
+use super::config::GitConfig;
 
 pub struct Git {
     pub repository: Repository,
     pub signature: Signature<'static>,
     config: GitConfig,
-}
-
-#[derive(Deserialize, Debug)]
-struct GitConfig {
-    user: UserConfig,
-    yggit: Yggit,
-    core: CoreConfig,
-}
-
-#[derive(Deserialize, Debug)]
-struct UserConfig {
-    email: String,
-    name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct Yggit {
-    #[serde(rename = "privateKey")]
-    private_key: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct CoreConfig {
-    editor: String,
 }
 
 #[derive(Clone)]
@@ -62,32 +40,13 @@ impl Git {
         }
     }
 
-    fn find_gitconfig(path: &Path) -> GitConfig {
-        let file = path.join(".gitconfig");
-        let file = File::open(file);
-        match file {
-            Ok(mut file) => {
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)
-                    .expect("Failed to read the file.");
-                let git_config: GitConfig =
-                    toml::from_str(&contents).expect("Git config parsing error");
-                git_config
-            }
-            Err(_) => {
-                let path = path.parent().expect(".gitconfig not found");
-                Self::find_gitconfig(path)
-            }
-        }
-    }
-
     /// Open a repository at the given path
     /// Also load the signature from the .gitconfig
     pub fn open(path: &str) -> Self {
         let current_dir = std::env::current_dir().expect("cannot open current directory");
         let path = current_dir.join(path);
         let repository = Self::find_repository(path.as_path());
-        let gitconfig = Self::find_gitconfig(path.as_path());
+        let gitconfig = GitConfig::from_directory(path.as_path()).expect("git config not found");
 
         let signature = Signature::now(&gitconfig.user.name, &gitconfig.user.email)
             .expect("cannot compute signature");

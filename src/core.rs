@@ -1,5 +1,6 @@
-use crate::git::{EnhancedCommit, Git, Note};
 use git2::Oid;
+
+use crate::git::{EnhancedCommit, Git, Note};
 
 /// Action is a super set of Note
 #[derive(Clone)]

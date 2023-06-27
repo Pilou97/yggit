@@ -1,6 +1,12 @@
 use git2::Oid;
+use serde::{Deserialize, Serialize};
 
-use crate::git::{EnhancedCommit, Git, Note};
+use crate::git::{EnhancedCommit, Git};
+
+#[derive(Serialize, Deserialize)]
+pub enum Note {
+    Target { branch: String },
+}
 
 /// Action is a super set of Note
 #[derive(Clone)]

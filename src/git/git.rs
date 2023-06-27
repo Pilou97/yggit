@@ -2,7 +2,7 @@ use git2::{
     Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions,
     RemoteCallbacks, Repository, Signature,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use std::{path::Path, process::Command};
 
 use super::config::GitConfig;
@@ -14,16 +14,11 @@ pub struct Git {
 }
 
 #[derive(Clone)]
-pub struct EnhancedCommit {
+pub struct EnhancedCommit<N> {
     pub id: Oid,
     pub title: String,
     pub description: Option<String>,
-    pub note: Option<Note>,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-pub enum Note {
-    Target { branch: String },
+    pub note: Option<N>,
 }
 
 impl Git {
@@ -76,7 +71,10 @@ impl Git {
     }
 
     /// List the commit in a repository and the attached note
-    pub fn list_commits(&self) -> Vec<EnhancedCommit> {
+    pub fn list_commits<N>(&self) -> Vec<EnhancedCommit<N>>
+    where
+        N: DeserializeOwned,
+    {
         // Find the commit of the "main" branch
         let main_branch = self.main_branch().expect("main/master to exist");
 
@@ -263,11 +261,14 @@ impl Git {
     }
 
     /// Retrieve a commit with its node
-    pub fn find_commit(&self, oid: Oid) -> Option<EnhancedCommit> {
+    pub fn find_commit<N>(&self, oid: Oid) -> Option<EnhancedCommit<N>>
+    where
+        N: DeserializeOwned,
+    {
         // Get the commit
         let commit = self.repository.find_commit(oid).ok()?;
         // Get the associated note
-        let note: Option<Note> = self
+        let note: Option<N> = self
             .repository
             .find_note(None, oid)
             .map(|note| note.message().map(|str| str.to_string()))

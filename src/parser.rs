@@ -3,11 +3,11 @@
 use git2::Oid;
 
 use crate::{
-    core::{Action, Instruction},
-    git::{EnhancedCommit, Note},
+    core::{Action, Instruction, Note},
+    git::EnhancedCommit,
 };
 
-pub fn commits_to_string(commits: Vec<EnhancedCommit>) -> String {
+pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     let mut output = String::default();
     for commit in commits {
         output = format!("{}{} {}\n", output, commit.id, commit.title);

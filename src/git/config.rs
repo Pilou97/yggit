@@ -27,6 +27,10 @@ pub struct Core {
 }
 
 impl GitConfig {
+    /// Load a .gitconfig from the current directory
+    ///
+    /// If the .gitconfig is not found, the function will try to load the gitconfig from the parent directory
+    /// until there is no more parent
     pub fn from_directory(path: &Path) -> Result<GitConfig, ()> {
         let file = path.join(".gitconfig");
         let file = File::open(file);

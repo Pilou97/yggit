@@ -12,7 +12,8 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     for commit in commits {
         output = format!("{}{} {}\n", output, commit.id, commit.title);
         if let Some(Note::Target { branch }) = commit.note {
-            output = format!("{}-> {}\n", output, branch);
+            // An empty line is added so that is cleaner to differentiate the different branch
+            output = format!("{}-> {}\n\n", output, branch);
         }
     }
     output

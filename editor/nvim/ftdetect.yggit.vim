@@ -1,0 +1,1 @@
+au BufRead,BufNewFile /tmp/yggit set filetype=yggit

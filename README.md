@@ -1,4 +1,4 @@
-# Pi
+# Yggit 
 
 A tool to manage my git worflow.
 

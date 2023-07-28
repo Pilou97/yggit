@@ -1,7 +1,10 @@
 // Git related
 
 use git2::Oid;
-use nom::{bytes::complete::tag, IResult};
+use nom::{
+    bytes::complete::{is_a, tag, take_till1, take_while1},
+    IResult,
+};
 
 use crate::{
     core::{Action, Instruction, Note},
@@ -20,73 +23,78 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     output
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Line {
     Oid(Oid),
     Action(Action),
+    Comment,
 }
 
-fn parse_line(line: &str) {
-    let res: IResult<&str, &str> = tag("->")(line);
-    let (remaining, tag) = res.unwrap();
-    println!("remaining: {}, tag: {}", remaining, tag);
+fn parse_line(line: &str) -> Line {
+    // First symbol
+    let push_ready: IResult<&str, &str> = tag("->")(line);
+    let push_draft: IResult<&str, &str> = tag("->?")(line);
+    let comment: IResult<&str, &str> = tag("#")(line);
+    let commit_hash: IResult<&str, &str> = is_a("1234567890abcdef")(line); // Add length
+
+    match (push_ready, push_draft, comment, commit_hash) {
+        (Ok((remaining, _)), _, _, _) => {
+            println!("push_ready");
+
+            // Remove the white characters
+            let res: IResult<&str, &str> = take_while1(|c| c == ' ')(remaining);
+            let (remaining, _) = res.unwrap();
+
+            // Extract the branch name
+            let res: IResult<&str, &str> = take_till1(|c| c == ' ' || c == '\n')(remaining);
+            let (_, branch) = res.unwrap();
+
+            // Returns the action
+            println!("branch: {}", branch);
+            Line::Action(Action::Target {
+                branch: branch.to_string(),
+            })
+        }
+        (_, Ok((_remaining, _)), _, _) => {
+            println!("push_draft");
+            todo!("push draft is not yet implemented")
+        }
+        (_, _, Ok((_remaining, _)), _) => Line::Comment,
+        (_, _, _, Ok((_remaining, commit_oid))) => {
+            let oid = Oid::from_str(commit_oid).unwrap();
+            Line::Oid(oid)
+        }
+        _ => Line::Comment,
+    }
 }
 
 pub fn instruction_from_string(string: String) -> Vec<Instruction> {
-    let lines = string.split('\n');
+    let lines: Vec<Line> = string.split('\n').map(parse_line).collect();
+    let current_items = lines.iter();
 
-    let mut before = None;
-    let mut instructions = Vec::default();
-    for line in lines {
-        parse_line(line);
+    let a = vec![None];
+    let previous_items = a
+        .iter()
+        .cloned()
+        .chain(lines.iter().map(|line| Some(line.clone())));
 
-        if line.starts_with('#') {
-            continue;
-        }
-
-        let current_line = match line.starts_with("->") {
-            true => {
-                let branch = line.chars().skip(2).collect::<String>().trim().to_string();
-                Some(Line::Action(Action::Target { branch }))
-            }
-            false => {
-                let mut iter = line.split(' ');
-                let oid = iter.next();
-                if let Some(oid) = oid {
-                    Oid::from_str(oid).ok().map(Line::Oid)
-                } else {
-                    None
-                }
-            }
-        };
-
-        let instruction = match (before, current_line.clone()) {
-            (None, None) => None,
-            (None, Some(_)) => None,
-            (Some(Line::Oid(oid)), None) => Some(Instruction {
-                id: oid,
+    previous_items
+        .zip(current_items)
+        .filter_map(|(previous, current)| match (previous, current) {
+            (Some(Line::Oid(id)), Line::Action(Action::Target { branch })) => Some(Instruction {
+                id: id.clone(),
+                action: Some(Action::Target {
+                    branch: branch.into(),
+                }),
+            }),
+            (_, Line::Oid(id)) => Some(Instruction {
+                id: id.clone(),
                 action: None,
             }),
-            (Some(Line::Oid(oid)), Some(Line::Action(Action::Target { branch }))) => {
-                Some(Instruction {
-                    id: oid,
-                    action: Some(Action::Target { branch }),
-                })
-            }
-            (Some(Line::Action(_)), None) => None,
-            (Some(Line::Action(_)), Some(Line::Oid(_))) => None,
-            (Some(Line::Oid(oid)), Some(Line::Oid(_))) => Some(Instruction {
-                id: oid,
-                action: None,
-            }),
-            (Some(Line::Action(_)), Some(Line::Action(_))) => None,
-        };
-
-        before = current_line;
-        if let Some(instruction) = instruction {
-            instructions.push(instruction)
-        }
-    }
-
-    instructions
+            (None, _) => None,
+            (_, Line::Comment) => None,
+            (Some(Line::Action(_)), Line::Action(_)) => None,
+            (Some(Line::Comment), _) => None,
+        })
+        .collect()
 }

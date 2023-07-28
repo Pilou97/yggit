@@ -37,6 +37,9 @@ impl Execute for Push {
         let content = git.edit_file(file_path)?;
 
         let instructions = instruction_from_string(content);
+        instructions.iter().for_each(|instruction| {
+            println!("{:?}", instruction);
+        });
 
         process_instructions(&git, instructions);
 

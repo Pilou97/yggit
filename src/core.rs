@@ -9,12 +9,12 @@ pub enum Note {
 }
 
 /// Action is a super set of Note
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Action {
     Target { branch: String },
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Instruction {
     pub id: Oid,
     pub action: Option<Action>,

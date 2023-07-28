@@ -1,6 +1,7 @@
 // Git related
 
 use git2::Oid;
+use nom::{bytes::complete::tag, IResult};
 
 use crate::{
     core::{Action, Instruction, Note},
@@ -25,12 +26,20 @@ enum Line {
     Action(Action),
 }
 
+fn parse_line(line: &str) {
+    let res: IResult<&str, &str> = tag("->")(line);
+    let (remaining, tag) = res.unwrap();
+    println!("remaining: {}, tag: {}", remaining, tag);
+}
+
 pub fn instruction_from_string(string: String) -> Vec<Instruction> {
     let lines = string.split('\n');
 
     let mut before = None;
     let mut instructions = Vec::default();
     for line in lines {
+        parse_line(line);
+
         if line.starts_with('#') {
             continue;
         }

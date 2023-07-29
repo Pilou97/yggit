@@ -1,5 +1,5 @@
 use crate::{
-    core::{apply_notes, process_instructions, push_branches},
+    core::{apply_notes, push_branches, update_note},
     git::Git,
     parser::{commits_to_string, instruction_from_string},
 };
@@ -41,7 +41,7 @@ impl Execute for Push {
             println!("{:?}", instruction);
         });
 
-        process_instructions(&git, instructions);
+        update_note(&git, instructions);
 
         // updates branches
         apply_notes(&git);

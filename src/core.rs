@@ -22,7 +22,7 @@ pub struct Instruction {
 
 // Process instruction
 // updates the notes
-pub fn process_instructions(git: &Git, instructions: Vec<Instruction>) {
+pub fn update_note(git: &Git, instructions: Vec<Instruction>) {
     for instruction in instructions {
         let Instruction { id: oid, action } = instruction;
 

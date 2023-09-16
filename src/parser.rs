@@ -1,11 +1,12 @@
 // Git related
 
-use git2::Oid;
-
 use crate::{
     core::{Action, Instruction, Note},
     git::EnhancedCommit,
 };
+use git2::Oid;
+use pest::{iterators::Pair, Parser};
+use pest_derive::Parser;
 
 pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     let mut output = String::default();
@@ -19,65 +20,77 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     output
 }
 
-#[derive(Clone)]
-enum Line {
-    Oid(Oid),
-    Action(Action),
+#[derive(Parser)]
+#[grammar = "parser/yggit.pest"]
+struct YggitParser;
+
+#[derive(Debug, Clone)]
+struct Commit {
+    hash: Oid,
+    #[allow(dead_code)]
+    title: String,
+    target: Option<String>,
 }
 
-pub fn instruction_from_string(string: String) -> Vec<Instruction> {
-    let lines = string.split('\n');
+fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
+    let mut commit = pair.into_inner();
 
-    let mut before = None;
-    let mut instructions = Vec::default();
-    for line in lines {
-        if line.starts_with('#') {
-            continue;
+    let git_commit = commit.next()?;
+    let mut git_commit = git_commit.into_inner();
+
+    let hash = git_commit.next()?;
+    let hash = Oid::from_str(hash.as_str()).ok()?;
+
+    let title = git_commit.next()?;
+    let title = title.as_str();
+
+    // Optional target
+    let target = commit.next();
+    let target = match target {
+        None => None,
+        Some(target) => {
+            let mut target = target.into_inner();
+            let _ = target.next()?;
+
+            let branch_name = target.next()?;
+            Some(branch_name.as_str().to_string())
         }
+    };
 
-        let current_line = match line.starts_with("->") {
-            true => {
-                let branch = line.chars().skip(2).collect::<String>().trim().to_string();
-                Some(Line::Action(Action::Target { branch }))
-            }
-            false => {
-                let mut iter = line.split(' ');
-                let oid = iter.next();
-                if let Some(oid) = oid {
-                    Oid::from_str(oid).ok().map(Line::Oid)
-                } else {
-                    None
-                }
-            }
-        };
+    Some(Commit {
+        hash,
+        title: title.to_string(),
+        target,
+    })
+}
 
-        let instruction = match (before, current_line.clone()) {
-            (None, None) => None,
-            (None, Some(_)) => None,
-            (Some(Line::Oid(oid)), None) => Some(Instruction {
-                id: oid,
-                action: None,
-            }),
-            (Some(Line::Oid(oid)), Some(Line::Action(Action::Target { branch }))) => {
-                Some(Instruction {
-                    id: oid,
-                    action: Some(Action::Target { branch }),
-                })
+fn parse_value(pair: Pair<Rule>) -> Option<Vec<Commit>> {
+    match pair.as_rule() {
+        Rule::commits => {
+            let mut commits = Vec::default();
+            for pair in pair.into_inner() {
+                let commit = parse_commit(pair)?;
+                commits.push(commit);
             }
-            (Some(Line::Action(_)), None) => None,
-            (Some(Line::Action(_)), Some(Line::Oid(_))) => None,
-            (Some(Line::Oid(oid)), Some(Line::Oid(_))) => Some(Instruction {
-                id: oid,
-                action: None,
-            }),
-            (Some(Line::Action(_)), Some(Line::Action(_))) => None,
-        };
-
-        before = current_line;
-        if let Some(instruction) = instruction {
-            instructions.push(instruction)
+            Some(commits)
         }
+        _ => None,
     }
+}
 
-    instructions
+pub fn instruction_from_string(input: String) -> Option<Vec<Instruction>> {
+    let pair = YggitParser::parse(Rule::commits, &input).ok()?.next()?;
+    let commits = parse_value(pair)?;
+
+    let commits = commits
+        .iter()
+        .cloned()
+        .map(|commit| Instruction {
+            id: commit.hash,
+            action: commit
+                .target
+                .map(|target| Action::Target { branch: target }),
+        })
+        .collect();
+    Some(commits)
 }

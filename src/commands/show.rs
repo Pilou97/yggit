@@ -19,7 +19,7 @@ impl Execute for Show {
 
         let file_path = "/tmp/yggit";
         let output = format!("{}\n{}", output, COMMENTS);
-        std::fs::write(file_path, output).unwrap();
+        std::fs::write(file_path, output).map_err(|_| println!("cannot write file to disk"))?;
 
         git.edit_file(file_path)?;
 

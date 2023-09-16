@@ -1,0 +1,16 @@
+string = _{ (!NEWLINE ~ ANY)+ }
+
+commit_hash = { ASCII_HEX_DIGIT{40} }
+commit_title = { string }
+git_commit = {commit_hash ~ WHITE_SPACE ~ commit_title ~ NEWLINE}
+
+
+branch_tag = { "->" }
+branch_name = { string }
+target = { branch_tag ~ WHITE_SPACE* ~ branch_name ~ NEWLINE}
+
+commit = {
+    git_commit ~ (target ~ NEWLINE*){, 1} ~ NEWLINE*
+}
+
+commits = { commit+ }

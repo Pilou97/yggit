@@ -32,11 +32,13 @@ impl Execute for Push {
         let file_path = "/tmp/yggit";
 
         let output = format!("{}\n{}", output, COMMENTS);
-        std::fs::write(file_path, output).unwrap();
+        std::fs::write(file_path, output).map_err(|_| println!("cannot write file to disk"))?;
 
         let content = git.edit_file(file_path)?;
 
-        let instructions = instruction_from_string(content);
+        let instructions = instruction_from_string(content).ok_or_else(|| {
+            println!("Cannot parse instructions");
+        })?;
 
         process_instructions(&git, instructions);
 

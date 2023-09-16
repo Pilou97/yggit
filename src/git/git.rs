@@ -300,12 +300,18 @@ impl Git {
 
     /// Set the head of the given branch to the given commit
     pub fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), ()> {
-        let Ok(commit) = self.repository.find_commit(oid) else {return Err(())};
+        let Ok(commit) = self.repository.find_commit(oid) else {
+            println!("commit does not exist");
+            return Err(())
+        };
 
         self.repository
             .branch(branch, &commit, true)
             .map(|_| ())
-            .map_err(|_| ())
+            .map_err(|err| {
+                println!("{:?}", err);
+                ()
+            })
     }
 
     /// Open the given file with the user's editor and returns the content of this file

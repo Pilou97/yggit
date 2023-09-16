@@ -50,7 +50,7 @@ pub fn apply_notes(git: &Git) {
             note: Some(Note::Target { branch }),
             ..
         } = commit else {continue;};
-        git.set_branch_to_commit(&branch, id).unwrap();
+        git.set_branch_to_commit(&branch, id).unwrap()
     }
 }
 

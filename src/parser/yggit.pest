@@ -9,8 +9,12 @@ branch_tag = { "->" }
 branch_name = { string }
 target = { branch_tag ~ WHITE_SPACE* ~ branch_name ~ NEWLINE}
 
+test_tag = { "$" }
+command = { string }
+test = { test_tag ~ WHITE_SPACE+ ~ command ~ NEWLINE }
+
 commit = {
-    git_commit ~ (target ~ NEWLINE*){, 1} ~ NEWLINE*
+    git_commit ~ (target ~ NEWLINE*){, 1} ~ test* ~ NEWLINE*
 }
 
 commits = { commit+ }

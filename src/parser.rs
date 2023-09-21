@@ -32,6 +32,17 @@ struct Commit {
     target: Option<String>,
 }
 
+fn parse_target(pair: Pair<Rule>) -> String {
+    println!("parsing target");
+    println!("{}", pair);
+
+    let mut target = pair.into_inner();
+    let _ = target.next().expect("symbol -> required"); // The tag
+
+    let branch_name = target.next().expect("branch name required");
+    branch_name.as_str().to_string()
+}
+
 fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
     let mut commit = pair.into_inner();
 
@@ -44,18 +55,21 @@ fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
     let title = git_commit.next()?;
     let title = title.as_str();
 
-    // Optional target
-    let target = commit.next();
-    let target = match target {
-        None => None,
-        Some(target) => {
-            let mut target = target.into_inner();
-            let _ = target.next()?;
+    let mut target = None;
 
-            let branch_name = target.next()?;
-            Some(branch_name.as_str().to_string())
+    // Optional target
+    while let Some(pair) = commit.next() {
+        match pair.as_rule() {
+            Rule::target => {
+                let branch_name = parse_target(pair);
+                target = Some(branch_name);
+            }
+            Rule::test => {
+                println!("Not yet implemented");
+            }
+            _ => (),
         }
-    };
+    }
 
     Some(Commit {
         hash,

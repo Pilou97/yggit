@@ -9,7 +9,7 @@ branch_tag = _{ "->" }
 branch_name = { string }
 target = { branch_tag ~ WHITE_SPACE* ~ branch_name ~ NEWLINE}
 
-test_tag = { "$" }
+test_tag = _{ "$" }
 command = { string }
 test = { test_tag ~ WHITE_SPACE+ ~ command ~ NEWLINE }
 

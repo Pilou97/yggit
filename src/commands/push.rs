@@ -1,5 +1,5 @@
 use crate::{
-    core::{apply_notes, process_instructions, push_branches},
+    core::{push_from_notes, save_note},
     git::Git,
     parser::{commits_to_string, instruction_from_string},
 };
@@ -36,17 +36,13 @@ impl Execute for Push {
 
         let content = git.edit_file(file_path)?;
 
-        let instructions = instruction_from_string(content).ok_or_else(|| {
+        let commits = instruction_from_string(content).ok_or_else(|| {
             println!("Cannot parse instructions");
         })?;
 
-        process_instructions(&git, instructions);
+        save_note(&git, commits);
 
-        // updates branches
-        apply_notes(&git);
-
-        // push
-        push_branches(&git);
+        push_from_notes(&git);
 
         Ok(())
     }

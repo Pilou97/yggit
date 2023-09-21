@@ -1,83 +1,97 @@
-use git2::Oid;
 use serde::{Deserialize, Serialize};
 
 use crate::git::{EnhancedCommit, Git};
 
-#[derive(Serialize, Deserialize)]
-pub enum Note {
-    Target { branch: String },
+#[derive(Deserialize, Serialize)]
+pub struct Push {
+    pub target: String,
 }
 
-/// Action is a super set of Note
-#[derive(Clone)]
-pub enum Action {
-    Target { branch: String },
+#[derive(Deserialize, Serialize)]
+pub struct Note {
+    pub push: Option<Push>,
+    pub tests: Vec<String>,
 }
 
-#[derive(Clone)]
-pub struct Instruction {
-    pub id: Oid,
-    pub action: Option<Action>,
-}
+/// Save the note to the commit
+///
+/// Also deletes note if there is nothing new
+pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
+    for commit in commits {
+        // Extract information from commit
+        let crate::parser::Commit {
+            hash,
+            target,
+            tests,
+            ..
+        } = commit;
 
-// Process instruction
-// updates the notes
-pub fn process_instructions(git: &Git, instructions: Vec<Instruction>) {
-    for instruction in instructions {
-        let Instruction { id: oid, action } = instruction;
+        let is_empty = target.is_none() && tests.is_empty();
 
-        match action {
-            Some(Action::Target { branch }) => {
-                // add note
-                let note = Note::Target { branch };
-                let Ok(()) = git.set_note(oid, note) else {continue;};
-            }
-            None => {
-                // delete note
-                git.delete_note(&oid);
-            }
+        if is_empty {
+            git.delete_note(&hash);
+        } else {
+            // Create the note
+            let note = Note {
+                push: target.map(|target| Push { target }),
+                tests: tests,
+            };
+
+            // Save the note
+            git.set_note(hash, note).unwrap();
         }
     }
 }
 
-/// Apply the notes
-pub fn apply_notes(git: &Git) {
+/// Execute the push instructions from the notes
+///
+/// Change the head of the given branches
+/// Push the branches to origin
+pub fn push_from_notes(git: &Git) {
     let commits = git.list_commits();
 
-    for commit in commits {
+    // Update the commits
+    for commit in &commits {
         let EnhancedCommit {
             id,
-            note: Some(Note::Target { branch }),
+            note:
+                Some(Note {
+                    push: Some(Push { target }),
+                    ..
+                }),
             ..
         } = commit else {continue;};
-        git.set_branch_to_commit(&branch, id).unwrap()
+        // Set the head of the branch to the given commit
+        git.set_branch_to_commit(&target, *id).unwrap(); // TODO: manage error
     }
-}
 
-/// Push force the branches with lease
-pub fn push_branches(git: &Git) {
-    let commits = git.list_commits();
-
-    // Push all branch, starting by the first one
-    // When a branch cannot be pushed it stops
+    // Push everything
     for commit in &commits {
-        let EnhancedCommit { note: Some(Note::Target { branch }), .. } = commit else {continue;};
-        let local_remote_commit = git.find_local_remote_head(branch);
-        let remote_commit = git.find_remote_head(branch);
-        let local_commit = git.head_of(branch);
+        let EnhancedCommit {
+            note:
+                Some(Note {
+                    push: Some(Push { target }),
+                    ..
+                }),
+            ..
+        } = commit else {continue;};
+
+        let local_remote_commit = git.find_local_remote_head(&target);
+        let remote_commit = git.find_remote_head(&target);
+        let local_commit = git.head_of(&target);
 
         if local_remote_commit != remote_commit {
-            println!("cannot push {}", branch);
+            println!("cannot push {}", target);
             return;
         }
 
         if local_commit == remote_commit {
-            println!("{} is up to date", branch);
+            println!("{} is up to date", target);
             continue;
         }
 
-        println!("pushing {}", branch);
-        git.push_force(branch);
-        println!("\r{} pushed", branch);
+        println!("pushing {}", target);
+        git.push_force(&target);
+        println!("\r{} pushed", target);
     }
 }

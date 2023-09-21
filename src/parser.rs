@@ -1,7 +1,7 @@
 // Git related
 
 use crate::{
-    core::{Action, Instruction, Note},
+    core::{Note, Push},
     git::EnhancedCommit,
 };
 use git2::Oid;
@@ -12,9 +12,17 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     let mut output = String::default();
     for commit in commits {
         output = format!("{}{} {}\n", output, commit.id, commit.title);
-        if let Some(Note::Target { branch }) = commit.note {
-            // An empty line is added so that is cleaner to differentiate the different branch
-            output = format!("{}-> {}\n\n", output, branch);
+        if let Some(Note { push, tests }) = commit.note {
+            if let Some(Push { target }) = &push {
+                output = format!("{}-> {}\n", output, target);
+            }
+            for command in tests {
+                output = format!("{}$ {}\n", output, command);
+            }
+            // An empty line is added so that is cleaner to differentiate the different MR
+            if let Some(_) = &push {
+                output = format!("{}\n", output);
+            }
         }
     }
     output
@@ -25,11 +33,12 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
 struct YggitParser;
 
 #[derive(Debug, Clone)]
-struct Commit {
-    hash: Oid,
+pub struct Commit {
+    pub hash: Oid,
     #[allow(dead_code)]
-    title: String,
-    target: Option<String>,
+    pub title: String,
+    pub target: Option<String>,
+    pub tests: Vec<String>,
 }
 
 fn parse_target(pair: Pair<Rule>) -> String {
@@ -39,6 +48,10 @@ fn parse_target(pair: Pair<Rule>) -> String {
     let mut target = pair.into_inner();
     let branch_name = target.next().expect("branch name required");
     branch_name.as_str().to_string()
+}
+
+fn parse_test(pair: Pair<Rule>) -> String {
+    pair.into_inner().next().unwrap().as_str().to_string()
 }
 
 fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
@@ -54,6 +67,7 @@ fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
     let title = title.as_str();
 
     let mut target = None;
+    let mut tests = Vec::default();
 
     // Optional target
     while let Some(pair) = commit.next() {
@@ -63,16 +77,19 @@ fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
                 target = Some(branch_name);
             }
             Rule::test => {
-                println!("Not yet implemented");
+                let test = parse_test(pair);
+                tests.push(test);
             }
             _ => (),
         }
     }
 
+    let _ = tests;
     Some(Commit {
         hash,
         title: title.to_string(),
         target,
+        tests,
     })
 }
 
@@ -90,19 +107,9 @@ fn parse_value(pair: Pair<Rule>) -> Option<Vec<Commit>> {
     }
 }
 
-pub fn instruction_from_string(input: String) -> Option<Vec<Instruction>> {
+pub fn instruction_from_string(input: String) -> Option<Vec<Commit>> {
     let pair = YggitParser::parse(Rule::commits, &input).ok()?.next()?;
     let commits = parse_value(pair)?;
 
-    let commits = commits
-        .iter()
-        .cloned()
-        .map(|commit| Instruction {
-            id: commit.hash,
-            action: commit
-                .target
-                .map(|target| Action::Target { branch: target }),
-        })
-        .collect();
     Some(commits)
 }

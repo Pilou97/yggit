@@ -5,7 +5,7 @@ commit_title = { string }
 git_commit = {commit_hash ~ WHITE_SPACE ~ commit_title ~ NEWLINE}
 
 
-branch_tag = { "->" }
+branch_tag = _{ "->" }
 branch_name = { string }
 target = { branch_tag ~ WHITE_SPACE* ~ branch_name ~ NEWLINE}
 

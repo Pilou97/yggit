@@ -37,8 +37,6 @@ fn parse_target(pair: Pair<Rule>) -> String {
     println!("{}", pair);
 
     let mut target = pair.into_inner();
-    let _ = target.next().expect("symbol -> required"); // The tag
-
     let branch_name = target.next().expect("branch name required");
     branch_name.as_str().to_string()
 }

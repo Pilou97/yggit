@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
-
 use crate::git::{EnhancedCommit, Git};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Push {
@@ -94,4 +93,44 @@ pub fn push_from_notes(git: &Git) {
         git.push_force(&target);
         println!("\r{} pushed", target);
     }
+}
+
+pub fn execute_tests_from_notes(git: &Git) -> Result<(), ()> {
+    let main = git
+        .repository
+        .find_branch("main", git2::BranchType::Local)
+        .unwrap();
+
+    git.rebase(main, |oid, git| {
+        let commit = git.find_commit::<Note>(oid).unwrap();
+
+        let note = match commit.note {
+            None => return Ok(()),
+            Some(note) => note,
+        };
+
+        for command in note.tests {
+            let status = std::process::Command::new("sh")
+                .arg("-c")
+                .arg(&command)
+                .status();
+
+            match status {
+                Ok(status) => match status.success() {
+                    true => {
+                        continue;
+                    }
+                    false => {
+                        println!("{} :failed", &command);
+                        return Err(());
+                    }
+                },
+                Err(_) => {
+                    println!("{} :failed", &command);
+                    return Err(());
+                }
+            }
+        }
+        Ok(())
+    })
 }

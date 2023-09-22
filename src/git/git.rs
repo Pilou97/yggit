@@ -1,11 +1,10 @@
+use super::config::GitConfig;
 use git2::{
     Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions,
-    RemoteCallbacks, Repository, Signature,
+    RebaseOperationType, RemoteCallbacks, Repository, Signature,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{path::Path, process::Command};
-
-use super::config::GitConfig;
 
 pub struct Git {
     pub repository: Repository,
@@ -323,5 +322,46 @@ impl Git {
         let true = output.success() else {return Err(());};
         let content = std::fs::read_to_string(file_path).unwrap();
         Ok(content)
+    }
+
+    /// Open or continue a rebase
+    pub fn rebase<F>(&self, onto: Branch, fct: F) -> Result<(), ()>
+    where
+        F: Fn(Oid, &Self) -> Result<(), ()>,
+    {
+        let branch = self
+            .repository
+            .reference_to_annotated_commit(onto.get())
+            .map_err(|_| ())?;
+
+        let mut rebase = match self.repository.open_rebase(None) {
+            Ok(rebase) => rebase,
+            Err(_) => self
+                .repository
+                .rebase(None, None, Some(&branch), None)
+                .expect("Failed to start rebase"),
+        };
+
+        while let Some(operation) = rebase.next() {
+            match operation {
+                Ok(operation) => match operation.kind() {
+                    Some(RebaseOperationType::Pick) => {
+                        let commit_id = operation.id();
+                        let res = fct(commit_id, &self);
+                        match res {
+                            Ok(()) => {
+                                rebase
+                                    .commit(None, &self.signature, None)
+                                    .expect("Failed to commit during rebase");
+                            }
+                            Err(_) => return Ok(()),
+                        }
+                    }
+                    _ => continue,
+                },
+                _ => continue,
+            }
+        }
+        rebase.finish(Some(&self.signature)).map_err(|_| ())
     }
 }

@@ -42,9 +42,6 @@ pub struct Commit {
 }
 
 fn parse_target(pair: Pair<Rule>) -> String {
-    println!("parsing target");
-    println!("{}", pair);
-
     let mut target = pair.into_inner();
     let branch_name = target.next().expect("branch name required");
     branch_name.as_str().to_string()

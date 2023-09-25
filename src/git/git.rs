@@ -347,13 +347,12 @@ impl Git {
                 Ok(operation) => match operation.kind() {
                     Some(RebaseOperationType::Pick) => {
                         let commit_id = operation.id();
+                        rebase
+                            .commit(None, &self.signature, None)
+                            .expect("Failed to commit during rebase");
                         let res = fct(commit_id, &self);
                         match res {
-                            Ok(()) => {
-                                rebase
-                                    .commit(None, &self.signature, None)
-                                    .expect("Failed to commit during rebase");
-                            }
+                            Ok(()) => {}
                             Err(_) => return Ok(()),
                         }
                     }

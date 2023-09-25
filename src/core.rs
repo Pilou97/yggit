@@ -96,10 +96,7 @@ pub fn push_from_notes(git: &Git) {
 }
 
 pub fn execute_tests_from_notes(git: &Git) -> Result<(), ()> {
-    let main = git
-        .repository
-        .find_branch("main", git2::BranchType::Local)
-        .unwrap();
+    let main = git.main_branch().unwrap();
 
     git.rebase(main, |oid, git| {
         let commit = git.find_commit::<Note>(oid).unwrap();

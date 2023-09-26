@@ -15,6 +15,7 @@ const COMMENTS: &str = r#"
 # 
 # Commands:
 # -> <branch> add a branch to the above commit
+# $ <command> this command will be executed 
 # 
 # What happens next?
 #  - All branches are pushed

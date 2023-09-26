@@ -1,7 +1,7 @@
 use super::config::GitConfig;
 use git2::{
     Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions,
-    RebaseOperationType, RemoteCallbacks, Repository, Signature,
+    RebaseOperationType, RebaseOptions, RemoteCallbacks, Repository, Signature,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{path::Path, process::Command};
@@ -334,33 +334,49 @@ impl Git {
             .reference_to_annotated_commit(onto.get())
             .map_err(|_| ())?;
 
-        let mut rebase = match self.repository.open_rebase(None) {
-            Ok(rebase) => rebase,
-            Err(_) => self
-                .repository
-                .rebase(None, None, Some(&branch), None)
-                .expect("Failed to start rebase"),
+        let mut rebase = {
+            let mut options = RebaseOptions::default();
+            let options = options.rewrite_notes_ref("NULL"); // hm, not sure...
+
+            self.repository
+                .rebase(None, None, Some(&branch), Some(options))
+                .expect("starting rebase should work")
         };
 
         while let Some(operation) = rebase.next() {
             match operation {
-                Ok(operation) => match operation.kind() {
-                    Some(RebaseOperationType::Pick) => {
-                        let commit_id = operation.id();
-                        // rebase
-                        // .commit(None, &self.signature, None)
-                        // .expect("Failed to commit during rebase");
-                        let res = fct(commit_id, &self);
-                        match res {
-                            Ok(()) => {}
-                            Err(_) => return Ok(()),
+                Ok(operation) => {
+                    let commit_id = operation.id();
+
+                    let commit = self
+                        .repository
+                        .find_commit(commit_id)
+                        .expect("commit to exist");
+                    let author = commit.author();
+                    let committer = commit.committer();
+
+                    rebase
+                        .commit(Some(&author), &committer, None)
+                        .expect("Failed to commit during rebase");
+
+                    match operation.kind() {
+                        Some(RebaseOperationType::Pick) => {
+                            let res = fct(commit_id, &self);
+                            match res {
+                                Ok(()) => {}
+                                Err(_) => return Ok(()),
+                            }
                         }
+                        _ => continue,
                     }
-                    _ => continue,
-                },
+                }
                 _ => continue,
             }
         }
-        rebase.finish(None).map_err(|_| ())
+        println!("REBASE FINISHED");
+        rebase.finish(Some(&self.signature)).map_err(|err| {
+            println!("error: {}", err);
+            ()
+        })
     }
 }

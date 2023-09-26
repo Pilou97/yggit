@@ -12,7 +12,7 @@ pub struct Git {
     config: GitConfig,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EnhancedCommit<N> {
     pub id: Oid,
     pub title: String,
@@ -347,9 +347,9 @@ impl Git {
                 Ok(operation) => match operation.kind() {
                     Some(RebaseOperationType::Pick) => {
                         let commit_id = operation.id();
-                        rebase
-                            .commit(None, &self.signature, None)
-                            .expect("Failed to commit during rebase");
+                        // rebase
+                        // .commit(None, &self.signature, None)
+                        // .expect("Failed to commit during rebase");
                         let res = fct(commit_id, &self);
                         match res {
                             Ok(()) => {}
@@ -361,6 +361,6 @@ impl Git {
                 _ => continue,
             }
         }
-        rebase.finish(Some(&self.signature)).map_err(|_| ())
+        rebase.finish(None).map_err(|_| ())
     }
 }

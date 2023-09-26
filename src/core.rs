@@ -1,12 +1,12 @@
 use crate::git::{EnhancedCommit, Git};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Push {
     pub target: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Note {
     pub push: Option<Push>,
     pub tests: Vec<String>,
@@ -51,6 +51,7 @@ pub fn push_from_notes(git: &Git) {
 
     // Update the commits
     for commit in &commits {
+        println!("{:?}", &commit);
         let EnhancedCommit {
             id,
             note:
@@ -83,6 +84,9 @@ pub fn push_from_notes(git: &Git) {
             println!("cannot push {}", target);
             return;
         }
+
+        println!("local: {:?}", &local_commit);
+        println!("remote: {:?}", &remote_commit);
 
         if local_commit == remote_commit {
             println!("{} is up to date", target);

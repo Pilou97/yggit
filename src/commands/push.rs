@@ -1,7 +1,7 @@
 use crate::{
     core::{merge_notes, push_from_notes, NoteMergingPolicy},
     git::Git,
-    parser::{commits_to_string, instruction_from_string},
+    parser::{commits_to_string, instruction_from_string, UiFilter},
 };
 use clap::Args;
 
@@ -27,7 +27,7 @@ impl Execute for Push {
         let git = Git::open(".");
 
         let commits = git.list_commits();
-        let output = commits_to_string(commits);
+        let output = commits_to_string(commits, UiFilter::OnlyTargets);
 
         let file_path = "/tmp/yggit";
 

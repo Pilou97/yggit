@@ -8,20 +8,41 @@ use git2::Oid;
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 
-pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
+pub enum UiFilter {
+    OnlyTests,
+    OnlyTargets,
+    All,
+}
+
+pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>, filter: UiFilter) -> String {
     let mut output = String::default();
     for commit in commits {
         output = format!("{}{} {}\n", output, commit.id, commit.title);
         if let Some(Note { push, tests }) = commit.note {
-            if let Some(Push { target }) = &push {
-                output = format!("{}-> {}\n", output, target);
-            }
-            for command in tests {
-                output = format!("{}$ {}\n", output, command);
-            }
-            // An empty line is added so that is cleaner to differentiate the different MR
-            if push.is_some() {
-                output = format!("{}\n", output);
+            match filter {
+                UiFilter::OnlyTargets => {
+                    if let Some(Push { target }) = &push {
+                        // An empty line is added so that is cleaner to differentiate the different MR
+                        output = format!("{}-> {}\n\n", output, target);
+                    }
+                }
+                UiFilter::OnlyTests => {
+                    for command in tests {
+                        output = format!("{}$ {}\n", output, command);
+                    }
+                }
+                UiFilter::All => {
+                    if let Some(Push { target }) = &push {
+                        // An empty line is added so that is cleaner to differentiate the different MR
+                        output = format!("{}-> {}\n", output, target);
+                    }
+                    for command in tests {
+                        output = format!("{}$ {}\n", output, command);
+                    }
+                    if push.is_some() {
+                        output = format!("{}\n", output);
+                    }
+                }
             }
         }
     }

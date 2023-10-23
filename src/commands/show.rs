@@ -1,6 +1,9 @@
 use clap::Args;
 
-use crate::{git::Git, parser::commits_to_string};
+use crate::{
+    git::Git,
+    parser::{commits_to_string, UiFilter},
+};
 
 use super::Execute;
 
@@ -15,7 +18,7 @@ impl Execute for Show {
     fn execute(&self) -> Result<(), ()> {
         let git = Git::open(".");
         let commits = git.list_commits();
-        let output = commits_to_string(commits);
+        let output = commits_to_string(commits, UiFilter::All);
 
         let file_path = "/tmp/yggit";
         let output = format!("{}\n{}", output, COMMENTS);

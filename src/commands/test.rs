@@ -1,7 +1,7 @@
 use crate::{
     core::{execute_tests_from_notes, merge_notes, NoteMergingPolicy},
     git::Git,
-    parser::{commits_to_string, instruction_from_string},
+    parser::{commits_to_string, instruction_from_string, UiFilter},
 };
 use clap::Args;
 
@@ -28,7 +28,7 @@ impl Execute for Test {
         let git = Git::open(".");
 
         let commits = git.list_commits();
-        let output = commits_to_string(commits);
+        let output = commits_to_string(commits, UiFilter::OnlyTests);
 
         let file_path = "/tmp/yggit";
 

@@ -360,10 +360,19 @@ impl Git {
                     let author = commit.author();
                     let committer = commit.committer();
 
-                    let _commit = rebase
+                    let note = self.repository.find_note(None, commit_id).ok();
+
+                    let commit = rebase
                         .commit(Some(&author), &committer, None)
                         .expect("Failed to commit during rebase");
 
+                    if let Some(note) = note {
+                        if let Some(note) = note.message() {
+                            self.repository
+                                .note(&author, &committer, None, commit, note, true)
+                                .expect("should be able to set the note during rebase");
+                        }
+                    }
                     // I don't like this solution...
                     // TODO: remove this ugly things...
                     let _ = Command::new("git")

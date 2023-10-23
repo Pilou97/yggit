@@ -1,12 +1,12 @@
 use super::config::GitConfig;
 use git2::{
-    Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions,
+    Branch, BranchType, Cred, CredentialType, Error, ErrorCode, FetchOptions, Oid, PushOptions,
     RebaseOperationType, RebaseOptions, RemoteCallbacks, Repository, Signature,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::process::Command;
 use std::process::Stdio;
-use std::{path::Path, thread::sleep, time::Duration};
+use std::{path::Path, process::exit, thread::sleep, time::Duration};
 
 pub struct Git {
     pub repository: Repository,
@@ -350,8 +350,11 @@ impl Git {
                 .rebase(None, None, Some(&branch), Some(options))
             {
                 Ok(rebase) => rebase,
-                Err(_) => {
-                    println!("Let's continue");
+                Err(err) => {
+                    if err.code() == ErrorCode::GenericError {
+                        println!("please commit your change before testing anything");
+                        exit(1);
+                    }
                     self.repository.open_rebase(Some(options)).expect("ohn no")
                 }
             }

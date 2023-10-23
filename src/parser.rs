@@ -20,7 +20,7 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
                 output = format!("{}$ {}\n", output, command);
             }
             // An empty line is added so that is cleaner to differentiate the different MR
-            if let Some(_) = &push {
+            if push.is_some() {
                 output = format!("{}\n", output);
             }
         }
@@ -44,7 +44,7 @@ pub struct Commit {
 fn parse_target(pair: Pair<Rule>) -> String {
     let mut target = pair.into_inner();
     let branch_name = target.next().expect("branch name required");
-    branch_name.as_str().to_string()
+    branch_name.as_str().to_string().trim().to_string()
 }
 
 fn parse_test(pair: Pair<Rule>) -> String {
@@ -67,7 +67,7 @@ fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
     let mut tests = Vec::default();
 
     // Optional target
-    while let Some(pair) = commit.next() {
+    for pair in commit {
         match pair.as_rule() {
             Rule::target => {
                 let branch_name = parse_target(pair);

@@ -33,7 +33,7 @@ pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
             // Create the note
             let note = Note {
                 push: target.map(|target| Push { target }),
-                tests: tests,
+                tests,
             };
 
             // Save the note
@@ -59,9 +59,12 @@ pub fn push_from_notes(git: &Git) {
                     ..
                 }),
             ..
-        } = commit else {continue;};
+        } = commit
+        else {
+            continue;
+        };
         // Set the head of the branch to the given commit
-        git.set_branch_to_commit(&target, *id).unwrap(); // TODO: manage error
+        git.set_branch_to_commit(target, *id).unwrap(); // TODO: manage error
     }
 
     // Push everything
@@ -73,11 +76,14 @@ pub fn push_from_notes(git: &Git) {
                     ..
                 }),
             ..
-        } = commit else {continue;};
+        } = commit
+        else {
+            continue;
+        };
 
-        let local_remote_commit = git.find_local_remote_head(&target);
-        let remote_commit = git.find_remote_head(&target);
-        let local_commit = git.head_of(&target);
+        let local_remote_commit = git.find_local_remote_head(target);
+        let remote_commit = git.find_remote_head(target);
+        let local_commit = git.head_of(target);
 
         if local_remote_commit != remote_commit {
             println!("cannot push {}", target);
@@ -90,7 +96,7 @@ pub fn push_from_notes(git: &Git) {
         }
 
         println!("pushing {}", target);
-        git.push_force(&target);
+        git.push_force(target);
         println!("\r{} pushed", target);
     }
 }

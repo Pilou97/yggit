@@ -91,7 +91,9 @@ impl Git {
                 break;
             }
 
-            let Some(commit) = self.find_commit(oid) else {continue;};
+            let Some(commit) = self.find_commit(oid) else {
+                continue;
+            };
             commits.push(commit);
         }
         commits.reverse();
@@ -251,7 +253,9 @@ impl Git {
     where
         N: Serialize,
     {
-        let Ok(note) = serde_json::to_string(&note) else {return Err(())};
+        let Ok(note) = serde_json::to_string(&note) else {
+            return Err(());
+        };
 
         self.repository
             .note(&self.signature, &self.signature, None, oid, &note, true)
@@ -301,7 +305,7 @@ impl Git {
     pub fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), ()> {
         let Ok(commit) = self.repository.find_commit(oid) else {
             println!("commit does not exist");
-            return Err(())
+            return Err(());
         };
 
         self.repository
@@ -309,7 +313,6 @@ impl Git {
             .map(|_| ())
             .map_err(|err| {
                 println!("{:?}", err);
-                ()
             })
     }
 
@@ -319,7 +322,9 @@ impl Git {
             .arg(file_path)
             .status()
             .expect("Failed to execute command");
-        let true = output.success() else {return Err(());};
+        let true = output.success() else {
+            return Err(());
+        };
         let content = std::fs::read_to_string(file_path).unwrap();
         Ok(content)
     }
@@ -350,7 +355,7 @@ impl Git {
                         rebase
                             .commit(None, &self.signature, None)
                             .expect("Failed to commit during rebase");
-                        let res = fct(commit_id, &self);
+                        let res = fct(commit_id, self);
                         match res {
                             Ok(()) => {}
                             Err(_) => return Ok(()),

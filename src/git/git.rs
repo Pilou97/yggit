@@ -343,9 +343,16 @@ impl Git {
             let mut options = RebaseOptions::default();
             let options = options.rewrite_notes_ref("NULL"); // hm, not sure...
 
-            self.repository
+            match self
+                .repository
                 .rebase(None, None, Some(&branch), Some(options))
-                .expect("starting rebase should work")
+            {
+                Ok(rebase) => rebase,
+                Err(_) => {
+                    println!("Let's continue");
+                    self.repository.open_rebase(Some(options)).expect("ohn no")
+                }
+            }
         };
 
         while let Some(operation) = rebase.next() {

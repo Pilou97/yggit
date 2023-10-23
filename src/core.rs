@@ -1,43 +1,64 @@
 use crate::git::{EnhancedCommit, Git};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, PartialEq)]
 pub struct Push {
     pub target: String,
 }
 
-#[derive(Deserialize, Serialize)]
+/// Note stored in each commit
+#[derive(Deserialize, Serialize, Default, PartialEq)]
 pub struct Note {
     pub push: Option<Push>,
     pub tests: Vec<String>,
 }
 
-/// Save the note to the commit
-///
-/// Also deletes note if there is nothing new
-pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
-    for commit in commits {
-        // Extract information from commit
-        let crate::parser::Commit {
-            hash,
-            target,
-            tests,
-            ..
-        } = commit;
+impl Note {
+    /// Check if the note is empty
+    fn is_empty(&self) -> bool {
+        self == &Self::default()
+    }
+}
 
-        let is_empty = target.is_none() && tests.is_empty();
+pub enum NoteMergingPolicy {
+    OnlyTarget,
+    OnlyTests,
+}
 
-        if is_empty {
-            git.delete_note(&hash);
+pub fn merge_notes(
+    git: &Git,
+    new_commits: Vec<crate::parser::Commit>,
+    merging_policy: NoteMergingPolicy,
+) {
+    for new_commit in new_commits {
+        let oid = new_commit.hash;
+        let EnhancedCommit {
+            note: current_note, ..
+        }: EnhancedCommit<Note> = git.find_commit(oid).expect("to exist");
+
+        let next_note = match merging_policy {
+            NoteMergingPolicy::OnlyTarget => {
+                let new_target = new_commit.target;
+                let mut current_note = current_note.unwrap_or_default();
+                match new_target {
+                    Some(new_target) => current_note.push = Some(Push { target: new_target }),
+                    None => current_note.push = None,
+                }
+                current_note
+            }
+            NoteMergingPolicy::OnlyTests => {
+                let new_tests = new_commit.tests;
+                let mut current_note = current_note.unwrap_or_default();
+                current_note.tests = new_tests;
+                current_note
+            }
+        };
+
+        // Check if empty
+        if next_note.is_empty() {
+            git.delete_note(&oid);
         } else {
-            // Create the note
-            let note = Note {
-                push: target.map(|target| Push { target }),
-                tests,
-            };
-
-            // Save the note
-            git.set_note(hash, note).unwrap();
+            git.set_note(oid, next_note).expect("not should be written");
         }
     }
 }

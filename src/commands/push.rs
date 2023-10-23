@@ -1,5 +1,5 @@
 use crate::{
-    core::{push_from_notes, save_note},
+    core::{merge_notes, push_from_notes, NoteMergingPolicy},
     git::Git,
     parser::{commits_to_string, instruction_from_string},
 };
@@ -40,7 +40,7 @@ impl Execute for Push {
             println!("Cannot parse instructions");
         })?;
 
-        save_note(&git, commits);
+        merge_notes(&git, commits, NoteMergingPolicy::OnlyTarget);
 
         push_from_notes(&git);
 

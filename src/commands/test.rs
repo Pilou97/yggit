@@ -1,5 +1,5 @@
 use crate::{
-    core::{execute_tests_from_notes, save_note},
+    core::{execute_tests_from_notes, merge_notes, NoteMergingPolicy},
     git::Git,
     parser::{commits_to_string, instruction_from_string},
 };
@@ -41,7 +41,7 @@ impl Execute for Test {
             println!("Cannot parse instructions");
         })?;
 
-        save_note(&git, commits);
+        merge_notes(&git, commits, NoteMergingPolicy::OnlyTests);
 
         execute_tests_from_notes(&git)?;
 

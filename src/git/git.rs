@@ -59,6 +59,9 @@ impl Git {
     /// If main exists it will be returned as the main branch
     /// If main does not exist, master will be returned as the main branch
     pub fn main_branch(&self) -> Option<Branch> {
+        // TODO: use the real main branch
+        // let reference = format!("refs/remotes/origin/HEAD");
+        // git symbolic-ref origin HEAD
         let branches = ["main", "master"];
 
         for branch in branches {

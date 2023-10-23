@@ -4,7 +4,9 @@ use git2::{
     RebaseOperationType, RebaseOptions, RemoteCallbacks, Repository, Signature,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::{path::Path, process::Command, thread::sleep, time::Duration};
+use std::process::Command;
+use std::process::Stdio;
+use std::{path::Path, thread::sleep, time::Duration};
 
 pub struct Git {
     pub repository: Repository,
@@ -386,6 +388,8 @@ impl Git {
                         .arg("commit")
                         .arg("--amend")
                         .arg("--no-edit")
+                        .stderr(Stdio::null())
+                        .stdout(Stdio::null())
                         .spawn();
                     sleep(Duration::from_millis(500));
 

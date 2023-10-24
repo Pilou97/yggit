@@ -8,22 +8,21 @@ use clap::Args;
 use super::Execute;
 
 #[derive(Debug, Args)]
-pub struct Test {}
+pub struct Rebase {}
 
 const COMMENTS: &str = r#"
 # Here is how to use yggit
 # 
 # Commands:
-# -> <branch> add a branch to the above commit
 # $ <command> this command will be executed 
 # 
 # What happens next?
 #  - All branches are pushed
 #
-# It's not a rebase, you can't edit commits nor reorder them
+# It does not have all rebase features but you can reorder them
 "#;
 
-impl Execute for Test {
+impl Execute for Rebase {
     fn execute(&self) -> Result<(), ()> {
         let git = Git::open(".");
 

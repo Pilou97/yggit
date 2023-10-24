@@ -1,8 +1,8 @@
 use clap::Parser;
 use clap::Subcommand;
 use commands::push::Push;
+use commands::rebase::Rebase;
 use commands::show::Show;
-use commands::test::Test;
 use commands::Execute;
 
 mod commands;
@@ -22,7 +22,7 @@ struct Cli {
 enum Commands {
     Push(Push),
     Show(Show),
-    Test(Test),
+    Rebase(Rebase),
 }
 
 fn main() {
@@ -31,6 +31,6 @@ fn main() {
     let _ = match args.command {
         Commands::Push(push) => push.execute(),
         Commands::Show(show) => show.execute(),
-        Commands::Test(test) => test.execute(),
+        Commands::Rebase(test) => test.execute(),
     };
 }

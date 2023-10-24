@@ -29,7 +29,8 @@ pub fn merge_notes(
     git: &Git,
     new_commits: Vec<crate::parser::Commit>,
     merging_policy: NoteMergingPolicy,
-) {
+) -> Vec<EnhancedCommit<Note>> {
+    let mut commits = Vec::default();
     for new_commit in new_commits {
         let oid = new_commit.hash;
         let EnhancedCommit {
@@ -60,7 +61,11 @@ pub fn merge_notes(
         } else {
             git.set_note(oid, next_note).expect("not should be written");
         }
+
+        let commit = git.find_commit(oid).unwrap();
+        commits.push(commit);
     }
+    commits
 }
 
 /// Execute the push instructions from the notes
@@ -122,39 +127,27 @@ pub fn push_from_notes(git: &Git) {
     }
 }
 
-pub fn execute_tests_from_notes(git: &Git) -> Result<(), ()> {
-    let main = git.main_branch().unwrap();
+pub fn execute_tests_from_notes(git: &Git, commits: Vec<EnhancedCommit<Note>>) -> Result<(), ()> {
+    // Create a file
+    let mut output = String::new();
+    for commit in commits {
+        let EnhancedCommit {
+            id, title, note, ..
+        } = commit;
 
-    git.rebase(main, |oid, git| {
-        let commit = git.find_commit::<Note>(oid).unwrap();
-
-        let note = match commit.note {
-            None => return Ok(()),
-            Some(note) => note,
-        };
-
-        for command in note.tests {
-            let status = std::process::Command::new("sh")
-                .arg("-c")
-                .arg(&command)
-                .status();
-
-            match status {
-                Ok(status) => match status.success() {
-                    true => {
-                        continue;
-                    }
-                    false => {
-                        println!("{} :failed", &command);
-                        return Err(());
-                    }
-                },
-                Err(_) => {
-                    println!("{} :failed", &command);
-                    return Err(());
-                }
+        let mut commit = format!("pick {id} {title}\n");
+        if let Some(Note { tests, .. }) = note {
+            for test in tests {
+                commit = format!("{commit}exec {test}\n")
             }
         }
-        Ok(())
-    })
+        output = format!("{output}{commit}")
+    }
+
+    let main = git.main_branch().unwrap();
+    git.start_rebase(main);
+
+    std::fs::write(".git/rebase-merge/git-rebase-todo", output).expect("I don't know");
+
+    Ok(())
 }

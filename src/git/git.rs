@@ -1,12 +1,11 @@
 use super::config::GitConfig;
 use git2::{
-    Branch, BranchType, Cred, CredentialType, Error, ErrorCode, FetchOptions, Oid, PushOptions,
-    RebaseOperationType, RebaseOptions, RemoteCallbacks, Repository, Signature,
+    Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions, RebaseOptions,
+    RemoteCallbacks, Repository, Signature,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::process::Command;
-use std::process::Stdio;
-use std::{path::Path, process::exit, thread::sleep, time::Duration};
+use std::{path::Path, process::exit};
 
 pub struct Git {
     pub repository: Repository,
@@ -332,91 +331,24 @@ impl Git {
     }
 
     /// Open or continue a rebase
-    pub fn rebase<F>(&self, onto: Branch, fct: F) -> Result<(), ()>
-    where
-        F: Fn(Oid, &Self) -> Result<(), ()>,
-    {
+    pub fn start_rebase(&self, onto: Branch) {
         let branch = self
             .repository
             .reference_to_annotated_commit(onto.get())
-            .map_err(|_| ())?;
+            .expect("branch should exist");
 
-        let mut rebase = {
-            let mut options = RebaseOptions::default();
-            let options = options.rewrite_notes_ref("NULL"); // hm, not sure...
+        let mut options = RebaseOptions::default();
+        let options = options.rewrite_notes_ref("NULL"); // hm, not sure...
 
-            match self
-                .repository
-                .rebase(None, None, Some(&branch), Some(options))
-            {
-                Ok(rebase) => rebase,
-                Err(err) => {
-                    if err.code() == ErrorCode::GenericError {
-                        println!("please commit your change before testing anything");
-                        exit(1);
-                    }
-                    self.repository.open_rebase(Some(options)).expect("ohn no")
-                }
-            }
-        };
-
-        while let Some(operation) = rebase.next() {
-            match operation {
-                Ok(operation) => {
-                    let commit_id = operation.id();
-
-                    let commit = self
-                        .repository
-                        .find_commit(commit_id)
-                        .expect("commit to exist");
-                    let author = commit.author();
-                    let committer = commit.committer();
-
-                    let note = self.repository.find_note(None, commit_id).ok();
-
-                    let commit = rebase
-                        .commit(Some(&author), &committer, None)
-                        .expect("Failed to commit during rebase");
-
-                    if let Some(note) = note {
-                        if let Some(note) = note.message() {
-                            self.repository
-                                .note(&author, &committer, None, commit, note, true)
-                                .expect("should be able to set the note during rebase");
-                        }
-                    }
-                    // I don't like this solution...
-                    // TODO: remove this ugly things...
-                    let _ = Command::new("git")
-                        .arg("commit")
-                        .arg("--amend")
-                        .arg("--no-edit")
-                        .stderr(Stdio::null())
-                        .stdout(Stdio::null())
-                        .spawn();
-                    sleep(Duration::from_millis(500));
-
-                    match operation.kind() {
-                        Some(RebaseOperationType::Pick) => {
-                            let res = fct(commit_id, self);
-                            match res {
-                                Ok(()) => {}
-                                Err(_) => return Ok(()),
-                            }
-                        }
-                        _ => continue,
-                    }
-                }
-                _ => continue,
+        match self
+            .repository
+            .rebase(None, None, Some(&branch), Some(options))
+        {
+            Ok(_) => (),
+            Err(_) => {
+                println!("cannot start the rebase");
+                exit(1);
             }
         }
-        rebase
-            .finish(Some(&self.signature))
-            .map_err(|err| {
-                println!("error: {}", err);
-            })
-            .map(|_| {
-                println!("REBASE FINISHED");
-            })
     }
 }

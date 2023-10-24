@@ -41,9 +41,9 @@ impl Execute for Test {
             println!("Cannot parse instructions");
         })?;
 
-        merge_notes(&git, commits, NoteMergingPolicy::OnlyTests);
+        let commits = merge_notes(&git, commits, NoteMergingPolicy::OnlyTests);
 
-        execute_tests_from_notes(&git)?;
+        execute_tests_from_notes(&git, commits)?;
 
         Ok(())
     }

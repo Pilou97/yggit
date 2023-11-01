@@ -1,11 +1,9 @@
 use super::config::GitConfig;
-use git2::{
-    Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions, RebaseOptions,
-    RemoteCallbacks, Repository, Signature,
-};
+use git2::{BranchType, Oid, RebaseOperation, RebaseOptions, Repository, Signature};
 use serde::{de::DeserializeOwned, Serialize};
+use std::fs;
+use std::path::Path;
 use std::process::Command;
-use std::{path::Path, process::exit};
 
 pub struct Git {
     pub repository: Repository,
@@ -53,35 +51,17 @@ impl Git {
         }
     }
 
-    /// Returns the main branch of the repository
-    ///
-    /// The branch can be either main or master
-    /// If main exists it will be returned as the main branch
-    /// If main does not exist, master will be returned as the main branch
-    pub fn main_branch(&self) -> Option<Branch> {
-        // TODO: use the real main branch
-        // let reference = format!("refs/remotes/origin/HEAD");
-        // git symbolic-ref origin HEAD
-        let branches = ["main", "master"];
-
-        for branch in branches {
-            let branch = self.repository.find_branch(branch, BranchType::Local);
-            if let Ok(branch) = branch {
-                return Some(branch);
-            }
-        }
-        None
-    }
-
     /// List the commit in a repository and the attached note
-    pub fn list_commits<N>(&self) -> Vec<EnhancedCommit<N>>
+    pub fn list_commits<N>(&self, branch: &str) -> Vec<EnhancedCommit<N>>
     where
         N: DeserializeOwned,
     {
-        // Find the commit of the "main" branch
-        let main_branch = self.main_branch().expect("main/master to exist");
+        let branch = self
+            .repository
+            .find_branch(branch, BranchType::Local)
+            .unwrap();
 
-        let main_commit = main_branch.get().peel_to_commit().unwrap();
+        let branch_head = branch.get().peel_to_commit().unwrap();
 
         let mut revwalk = self.repository.revwalk().unwrap();
         revwalk.push_head().unwrap();
@@ -91,7 +71,7 @@ impl Git {
         for oid in revwalk {
             let oid = oid.unwrap();
 
-            if oid == main_commit.id() {
+            if oid == branch_head.id() {
                 break;
             }
 
@@ -102,145 +82,6 @@ impl Git {
         }
         commits.reverse();
         commits
-    }
-
-    /// The callback to authenticate users
-    ///
-    /// For now, it only supports ssh
-    fn auth_callback(
-        &self,
-    ) -> impl FnMut(&str, Option<&str>, CredentialType) -> Result<Cred, Error> {
-        let private_key = self.config.yggit.private_key.clone();
-        move |_, _, _| {
-            let path = Path::new(&private_key);
-            Cred::ssh_key("git", None, path, None)
-        }
-    }
-
-    /// Returns the remote callback
-    fn remote_callback(&self) -> RemoteCallbacks {
-        let mut remote_callbacks = RemoteCallbacks::new();
-        remote_callbacks.credentials(self.auth_callback());
-        remote_callbacks
-    }
-
-    /// Returns the local id of the head of origin/{branch}
-    pub fn find_local_remote_head(&self, branch: &str) -> Option<Oid> {
-        let Self { repository, .. } = self;
-        // Get the reference of the branch
-        let reference = format!("refs/remotes/origin/{}", branch);
-
-        // Get the head of this branch
-        repository
-            .find_reference(&reference)
-            .ok()
-            .and_then(|reference| reference.peel_to_commit().ok())
-            .map(|commit| commit.id())
-    }
-
-    /// Returns the remote head of origin/{branch}
-    ///
-    /// It will fetch the repository
-    /// Get the head
-    /// Revert the fetch
-    pub fn find_remote_head(&self, branch: &str) -> Option<Oid> {
-        let Self { repository, .. } = self;
-        // Get the remote
-        let mut remote = repository.find_remote("origin").expect("remote not found");
-        // Get the reference of the branch
-        let reference = format!("refs/remotes/origin/{}", branch);
-
-        // Get the head of this branch
-        let local_commit = repository
-            .find_reference(&reference)
-            .ok()
-            .and_then(|reference| reference.peel_to_commit().ok());
-
-        // Fetch the branch
-        let mut options = FetchOptions::new();
-        options.remote_callbacks(self.remote_callback());
-
-        remote
-            .fetch(&[branch], Some(&mut options), Some("fetch branch"))
-            .expect("Fetching repository");
-
-        // Get the new head
-        let remote_commit = repository
-            .find_reference(&reference)
-            .ok()
-            .and_then(|reference| reference.peel_to_commit().ok());
-
-        // Get the reference object to the reference
-        let reference = repository.find_reference(&reference).ok();
-
-        // Change the reference to the old commit to revert the fetch
-
-        match (local_commit, remote_commit, reference) {
-            (None, None, None) => None,
-            (None, None, Some(_)) => {
-                println!("remote and reference should exists possible");
-                None
-            }
-            (None, Some(_), None) => {
-                println!("odd");
-                None
-            }
-            (None, Some(remote_commit), Some(_)) => {
-                println!("No local commits, but remote one");
-                Some(remote_commit.id())
-            }
-            (Some(_), None, None) => None,
-            (Some(local_commit), None, Some(mut reference)) => {
-                reference
-                    .set_target(local_commit.id(), "revert fetch")
-                    .expect("revert fetch error");
-                println!("reference and remote should exists");
-                None
-            }
-            (Some(_), Some(remote_commit), None) => {
-                println!("local commit exists, remote too, but no references...");
-                Some(remote_commit.id())
-            }
-            (Some(local_commit), Some(remote_commit), Some(mut reference)) => {
-                reference
-                    .set_target(local_commit.id(), "revert fetch")
-                    .expect("revert fetch error");
-                Some(remote_commit.id())
-            }
-        }
-    }
-
-    ///  Returns the commit to head of branch and head of branch/origin
-    pub fn head_of(&self, branch: &str) -> Option<Oid> {
-        let local_reference_name = format!("refs/heads/{}", branch);
-
-        // Get the local commit
-        self.repository
-            .find_reference(&local_reference_name)
-            .ok()
-            .and_then(|reference| reference.peel_to_commit().ok())
-            .map(|commit| commit.id())
-    }
-
-    /// Push force a branch
-    pub fn push_force(&self, branch: &str) {
-        let fetch_refname = format!("refs/heads/{}", branch);
-        let mut remote = self
-            .repository
-            .find_remote("origin")
-            .expect("Cannot find origin");
-
-        let mut push_options = PushOptions::new();
-        push_options.remote_callbacks(self.remote_callback());
-
-        remote
-            .connect_auth(git2::Direction::Push, Some(self.remote_callback()), None)
-            .expect("Cannot connect to remote in Push direction");
-
-        // The + character means that the branch is forced pushed
-        remote
-            .push(&[format!("+{}", fetch_refname)], Some(&mut push_options))
-            .expect("Push force failed");
     }
 
     /// Delete a note
@@ -305,21 +146,6 @@ impl Git {
         })
     }
 
-    /// Set the head of the given branch to the given commit
-    pub fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), ()> {
-        let Ok(commit) = self.repository.find_commit(oid) else {
-            println!("commit does not exist");
-            return Err(());
-        };
-
-        self.repository
-            .branch(branch, &commit, true)
-            .map(|_| ())
-            .map_err(|err| {
-                println!("{:?}", err);
-            })
-    }
-
     /// Open the given file with the user's editor and returns the content of this file
     pub fn edit_file(&self, file_path: &str) -> Result<String, ()> {
         let output = Command::new(&self.config.core.editor)
@@ -333,8 +159,12 @@ impl Git {
         Ok(content)
     }
 
-    /// Open or continue a rebase
-    pub fn start_rebase(&self, onto: Branch) {
+    pub(crate) fn start_rebase(&self, branch: &str) {
+        let onto = self
+            .repository
+            .find_branch(branch, BranchType::Local)
+            .expect("the branch should exist");
+
         let branch = self
             .repository
             .reference_to_annotated_commit(onto.get())
@@ -343,15 +173,22 @@ impl Git {
         let mut options = RebaseOptions::default();
         let options = options.rewrite_notes_ref("NULL"); // hm, not sure...
 
-        match self
+        let _ = self
             .repository
             .rebase(None, None, Some(&branch), Some(options))
-        {
-            Ok(_) => (),
-            Err(_) => {
-                println!("cannot start the rebase");
-                exit(1);
-            }
-        }
+            .expect("rebase should have started");
+    }
+
+    pub(crate) fn write_todo(&self, instructions: &str) {
+        let path = ".git/rebase-merge/git-rebase-todo";
+        fs::write(path, instructions).expect("todo should be written");
+    }
+
+    pub(crate) fn rebase_continue(&self) {
+        Command::new("git")
+            .arg("rebase")
+            .arg("--continue")
+            .spawn()
+            .expect("should work");
     }
 }

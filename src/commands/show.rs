@@ -17,7 +17,7 @@ const COMMENTS: &str = r#"
 impl Execute for Show {
     fn execute(&self) -> Result<(), ()> {
         let git = Git::open(".");
-        let commits = git.list_commits();
+        let commits = git.list_commits("main");
         let output = commits_to_string(commits, UiFilter::All);
 
         let file_path = "/tmp/yggit";

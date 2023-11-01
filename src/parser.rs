@@ -9,7 +9,6 @@ use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 
 pub enum UiFilter {
-    OnlyTests,
     OnlyTargets,
     All,
 }
@@ -24,11 +23,6 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>, filter: UiFilter) -
                     if let Some(Push { target }) = &push {
                         // An empty line is added so that is cleaner to differentiate the different MR
                         output = format!("{}-> {}\n\n", output, target);
-                    }
-                }
-                UiFilter::OnlyTests => {
-                    for command in tests {
-                        output = format!("{}$ {}\n", output, command);
                     }
                 }
                 UiFilter::All => {

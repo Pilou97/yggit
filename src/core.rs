@@ -22,7 +22,6 @@ impl Note {
 
 pub enum NoteMergingPolicy {
     OnlyTarget,
-    OnlyTests,
 }
 
 pub fn merge_notes(
@@ -47,12 +46,6 @@ pub fn merge_notes(
                 }
                 current_note
             }
-            NoteMergingPolicy::OnlyTests => {
-                let new_tests = new_commit.tests;
-                let mut current_note = current_note.unwrap_or_default();
-                current_note.tests = new_tests;
-                current_note
-            }
         };
 
         // Check if empty
@@ -66,88 +59,4 @@ pub fn merge_notes(
         commits.push(commit);
     }
     commits
-}
-
-/// Execute the push instructions from the notes
-///
-/// Change the head of the given branches
-/// Push the branches to origin
-pub fn push_from_notes(git: &Git) {
-    let commits = git.list_commits();
-
-    // Update the commits
-    for commit in &commits {
-        let EnhancedCommit {
-            id,
-            note:
-                Some(Note {
-                    push: Some(Push { target }),
-                    ..
-                }),
-            ..
-        } = commit
-        else {
-            continue;
-        };
-        // Set the head of the branch to the given commit
-        git.set_branch_to_commit(target, *id).unwrap(); // TODO: manage error
-    }
-
-    // Push everything
-    for commit in &commits {
-        let EnhancedCommit {
-            note:
-                Some(Note {
-                    push: Some(Push { target }),
-                    ..
-                }),
-            ..
-        } = commit
-        else {
-            continue;
-        };
-
-        let local_remote_commit = git.find_local_remote_head(target);
-        let remote_commit = git.find_remote_head(target);
-        let local_commit = git.head_of(target);
-
-        if local_remote_commit != remote_commit {
-            println!("cannot push {}", target);
-            return;
-        }
-
-        if local_commit == remote_commit {
-            println!("{} is up to date", target);
-            continue;
-        }
-
-        println!("pushing {}", target);
-        git.push_force(target);
-        println!("\r{} pushed", target);
-    }
-}
-
-pub fn execute_tests_from_notes(git: &Git, commits: Vec<EnhancedCommit<Note>>) -> Result<(), ()> {
-    // Create a file
-    let mut output = String::new();
-    for commit in commits {
-        let EnhancedCommit {
-            id, title, note, ..
-        } = commit;
-
-        let mut commit = format!("pick {id} {title}\n");
-        if let Some(Note { tests, .. }) = note {
-            for test in tests {
-                commit = format!("{commit}exec {test}\n")
-            }
-        }
-        output = format!("{output}{commit}")
-    }
-
-    let main = git.main_branch().unwrap();
-    git.start_rebase(main);
-
-    std::fs::write(".git/rebase-merge/git-rebase-todo", output).expect("I don't know");
-
-    Ok(())
 }

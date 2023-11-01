@@ -1,9 +1,10 @@
 use crate::{
-    core::{merge_notes, push_from_notes, NoteMergingPolicy},
+    core::{merge_notes, Note, NoteMergingPolicy},
     git::Git,
     parser::{commits_to_string, instruction_from_string, UiFilter},
 };
 use clap::Args;
+use git2::Oid;
 
 use super::Execute;
 
@@ -22,11 +23,16 @@ const COMMENTS: &str = r#"
 # It's not a rebase, you can't edit commits nor reorder them
 "#;
 
+enum Instruction {
+    Pick(Oid),
+    Push(Oid, String),
+}
+
 impl Execute for Push {
     fn execute(&self) -> Result<(), ()> {
         let git = Git::open(".");
 
-        let commits = git.list_commits();
+        let commits = git.list_commits("main");
         let output = commits_to_string(commits, UiFilter::OnlyTargets);
 
         let file_path = "/tmp/yggit";
@@ -40,9 +46,38 @@ impl Execute for Push {
             println!("Cannot parse instructions");
         })?;
 
-        merge_notes(&git, commits, NoteMergingPolicy::OnlyTarget);
+        let commits = merge_notes(&git, commits, NoteMergingPolicy::OnlyTarget);
 
-        push_from_notes(&git);
+        let instruction = commits
+            .iter()
+            .fold(Vec::default(), |mut acc, commit| {
+                let oid = commit.id;
+                let note = &commit.note;
+                acc.push(Instruction::Pick(oid));
+                if let Some(Note {
+                    push: Some(crate::core::Push { target }),
+                    ..
+                }) = note
+                {
+                    acc.push(Instruction::Push(oid, target.clone()));
+                }
+                acc
+            })
+            .iter()
+            .map(|instruction| match instruction {
+                Instruction::Pick(oid) => format!("pick {oid}"),
+                Instruction::Push(oid, target) => {
+                    format!("exec git push origin {oid}:refs/heads/{target} --force-with-lease")
+                }
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        git.start_rebase("main");
+        git.write_todo(&instruction);
+        // git.rebase_continue();
+
+        println!("DONE");
 
         Ok(())
     }

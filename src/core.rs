@@ -76,7 +76,7 @@ pub fn push_from_notes(git: &Git) {
         let EnhancedCommit {
             note:
                 Some(Note {
-                    push: Some(Push { origin: _, branch }),
+                    push: Some(Push { origin, branch }),
                     ..
                 }),
             ..
@@ -85,8 +85,8 @@ pub fn push_from_notes(git: &Git) {
             continue;
         };
 
-        let local_remote_commit = git.find_local_remote_head(branch);
-        let remote_commit = git.find_remote_head(branch);
+        let local_remote_commit = git.find_local_remote_head(origin, branch);
+        let remote_commit = git.find_remote_head(origin, branch);
         let local_commit = git.head_of(branch);
 
         if local_remote_commit != remote_commit {
@@ -100,7 +100,7 @@ pub fn push_from_notes(git: &Git) {
         }
 
         println!("pushing {}", branch);
-        git.push_force(branch);
+        git.push_force(origin, branch);
         println!("\r{} pushed", branch);
     }
 }

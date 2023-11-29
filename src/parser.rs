@@ -13,8 +13,8 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     for commit in commits {
         output = format!("{}{} {}\n", output, commit.id, commit.title);
         if let Some(Note { push, tests }) = commit.note {
-            if let Some(Push { target }) = &push {
-                output = format!("{}-> {}\n", output, target);
+            if let Some(Push { origin, branch }) = &push {
+                output = format!("{}-> {}:{}\n", output, origin, branch);
             }
             for command in tests {
                 output = format!("{}$ {}\n", output, command);
@@ -33,18 +33,43 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
 struct YggitParser;
 
 #[derive(Debug, Clone)]
+pub struct Target {
+    pub origin: String,
+    pub branch: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct Commit {
     pub hash: Oid,
     #[allow(dead_code)]
     pub title: String,
-    pub target: Option<String>,
+    pub target: Option<Target>,
     pub tests: Vec<String>,
 }
 
-fn parse_target(pair: Pair<Rule>) -> String {
-    let mut target = pair.into_inner();
-    let branch_name = target.next().expect("branch name required");
-    branch_name.as_str().to_string().trim().to_string()
+fn parse_target(pair: Pair<Rule>) -> Option<Target> {
+    let target = pair.into_inner();
+
+    let mut parsed_origin = "origin".into();
+    let mut parsed_branch = None;
+
+    for pair in target.into_iter() {
+        match pair.as_rule() {
+            Rule::origin => {
+                parsed_origin = pair.as_str().to_string();
+            }
+            Rule::branch_name => {
+                parsed_branch = Some(pair.as_str().to_string());
+            }
+            _ => (),
+        }
+    }
+    let parsed_branch = parsed_branch?;
+
+    Some(Target {
+        origin: parsed_origin,
+        branch: parsed_branch,
+    })
 }
 
 fn parse_test(pair: Pair<Rule>) -> String {
@@ -70,8 +95,7 @@ fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
     for pair in commit {
         match pair.as_rule() {
             Rule::target => {
-                let branch_name = parse_target(pair);
-                target = Some(branch_name);
+                target = parse_target(pair);
             }
             Rule::test => {
                 let test = parse_test(pair);
@@ -105,7 +129,10 @@ fn parse_value(pair: Pair<Rule>) -> Option<Vec<Commit>> {
 }
 
 pub fn instruction_from_string(input: String) -> Option<Vec<Commit>> {
-    let pair = YggitParser::parse(Rule::commits, &input).ok()?.next()?;
+    let pair = YggitParser::parse(Rule::commits, &input)
+        .map_err(|err| println!("{err}"))
+        .ok()?
+        .next()?;
     let commits = parse_value(pair)?;
 
     Some(commits)

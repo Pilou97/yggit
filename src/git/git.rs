@@ -1,8 +1,8 @@
 use super::config::GitConfig;
 use auth_git2::GitAuthenticator;
 use git2::{
-    Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions,
-    RebaseOperationType, RebaseOptions, RemoteCallbacks, Repository, Signature,
+    Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, RebaseOperationType,
+    RebaseOptions, RemoteCallbacks, Repository, Signature,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{path::Path, process::Command, thread::sleep, time::Duration};
@@ -229,17 +229,13 @@ impl Git {
             .find_remote("origin")
             .expect("Cannot find origin");
 
-        let mut push_options = PushOptions::new();
-        push_options.remote_callbacks(self.remote_callback());
-
-        remote
-            .connect_auth(git2::Direction::Push, Some(self.remote_callback()), None)
-            .expect("Cannot connect to remote in Push direction");
-
-        // The + character means that the branch is forced pushed
-        remote
-            .push(&[format!("+{}", fetch_refname)], Some(&mut push_options))
-            .expect("Push force failed");
+        self.auth
+            .push(
+                &self.repository,
+                &mut remote,
+                &[format!("+{}", fetch_refname).as_str()],
+            )
+            .expect("push force failed");
     }
 
     /// Delete a note

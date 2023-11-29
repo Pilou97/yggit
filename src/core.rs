@@ -1,9 +1,13 @@
-use crate::git::{EnhancedCommit, Git};
+use crate::{
+    git::{EnhancedCommit, Git},
+    parser::Target,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Push {
-    pub target: String,
+    pub origin: String,
+    pub branch: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -32,7 +36,7 @@ pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
         } else {
             // Create the note
             let note = Note {
-                push: target.map(|target| Push { target }),
+                push: target.map(|Target { origin, branch }| Push { origin, branch }),
                 tests,
             };
 
@@ -55,7 +59,7 @@ pub fn push_from_notes(git: &Git) {
             id,
             note:
                 Some(Note {
-                    push: Some(Push { target }),
+                    push: Some(Push { branch, origin: _ }),
                     ..
                 }),
             ..
@@ -64,7 +68,7 @@ pub fn push_from_notes(git: &Git) {
             continue;
         };
         // Set the head of the branch to the given commit
-        git.set_branch_to_commit(target, *id).unwrap(); // TODO: manage error
+        git.set_branch_to_commit(branch, *id).unwrap(); // TODO: manage error
     }
 
     // Push everything
@@ -72,7 +76,7 @@ pub fn push_from_notes(git: &Git) {
         let EnhancedCommit {
             note:
                 Some(Note {
-                    push: Some(Push { target }),
+                    push: Some(Push { origin, branch }),
                     ..
                 }),
             ..
@@ -81,23 +85,23 @@ pub fn push_from_notes(git: &Git) {
             continue;
         };
 
-        let local_remote_commit = git.find_local_remote_head(target);
-        let remote_commit = git.find_remote_head(target);
-        let local_commit = git.head_of(target);
+        let local_remote_commit = git.find_local_remote_head(origin, branch);
+        let remote_commit = git.find_remote_head(origin, branch);
+        let local_commit = git.head_of(branch);
 
         if local_remote_commit != remote_commit {
-            println!("cannot push {}", target);
+            println!("cannot push {}", branch);
             return;
         }
 
         if local_commit == remote_commit {
-            println!("{} is up to date", target);
+            println!("{}:{} is up to date", origin, branch);
             continue;
         }
 
-        println!("pushing {}", target);
-        git.push_force(target);
-        println!("\r{} pushed", target);
+        println!("pushing {}:{}", origin, branch);
+        git.push_force(origin, branch);
+        println!("\r{}:{} pushed", origin, branch);
     }
 }
 

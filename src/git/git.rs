@@ -101,10 +101,10 @@ impl Git {
     }
 
     /// Returns the local id of the head of origin/{branch}
-    pub fn find_local_remote_head(&self, branch: &str) -> Option<Oid> {
+    pub fn find_local_remote_head(&self, origin: &str, branch: &str) -> Option<Oid> {
         let Self { repository, .. } = self;
         // Get the reference of the branch
-        let reference = format!("refs/remotes/origin/{}", branch);
+        let reference = format!("refs/remotes/{}/{}", origin, branch);
 
         // Get the head of this branch
         repository
@@ -119,12 +119,12 @@ impl Git {
     /// It will fetch the repository
     /// Get the head
     /// Revert the fetch
-    pub fn find_remote_head(&self, branch: &str) -> Option<Oid> {
+    pub fn find_remote_head(&self, origin: &str, branch: &str) -> Option<Oid> {
         let Self { repository, .. } = self;
         // Get the remote
-        let mut remote = repository.find_remote("origin").expect("remote not found");
+        let mut remote = repository.find_remote(origin).expect("remote not found");
         // Get the reference of the branch
-        let reference = format!("refs/remotes/origin/{}", branch);
+        let reference = format!("refs/remotes/{}/{}", origin, branch);
 
         // Get the head of this branch
         let local_commit = repository
@@ -201,11 +201,11 @@ impl Git {
     }
 
     /// Push force a branch
-    pub fn push_force(&self, branch: &str) {
+    pub fn push_force(&self, origin: &str, branch: &str) {
         let fetch_refname = format!("refs/heads/{}", branch);
         let mut remote = self
             .repository
-            .find_remote("origin")
+            .find_remote(origin)
             .expect("Cannot find origin");
 
         self.auth

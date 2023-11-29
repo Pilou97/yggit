@@ -1,4 +1,5 @@
 use super::config::GitConfig;
+use auth_git2::GitAuthenticator;
 use git2::{
     Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, PushOptions,
     RebaseOperationType, RebaseOptions, RemoteCallbacks, Repository, Signature,
@@ -10,6 +11,7 @@ pub struct Git {
     pub repository: Repository,
     pub signature: Signature<'static>,
     config: GitConfig,
+    auth: GitAuthenticator,
 }
 
 #[derive(Clone)]
@@ -49,6 +51,7 @@ impl Git {
             repository,
             signature,
             config: gitconfig,
+            auth: GitAuthenticator::new(),
         }
     }
 

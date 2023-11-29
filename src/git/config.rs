@@ -5,7 +5,6 @@ use serde::Deserialize;
 #[derive(Deserialize, Debug)]
 pub struct GitConfig {
     pub user: User,
-    pub yggit: Yggit,
     pub core: Core,
 }
 
@@ -13,12 +12,6 @@ pub struct GitConfig {
 pub struct User {
     pub email: String,
     pub name: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Yggit {
-    #[serde(rename = "privateKey")]
-    pub private_key: String,
 }
 
 #[derive(Deserialize, Debug)]

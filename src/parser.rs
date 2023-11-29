@@ -70,6 +70,7 @@ fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
     for pair in commit {
         match pair.as_rule() {
             Rule::target => {
+                println!("{}", pair);
                 let branch_name = parse_target(pair);
                 target = Some(branch_name);
             }

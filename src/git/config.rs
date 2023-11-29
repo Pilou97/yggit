@@ -26,7 +26,6 @@ impl GitConfig {
     /// until there is no more parent
     pub fn from_directory(path: &Path) -> Result<GitConfig, ()> {
         let file = path.join(".gitconfig");
-        println!("{:?}", file);
         let file = File::open(file);
         match file {
             Ok(mut file) => {

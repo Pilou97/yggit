@@ -39,7 +39,7 @@ impl Git {
         let current_dir = std::env::current_dir().expect("cannot open current directory");
         let path = current_dir.join(path);
         let repository = Self::find_repository(path.as_path());
-        let gitconfig = GitConfig::from_directory(path.as_path()).expect("git config not found");
+        let gitconfig = GitConfig::open().expect("git config not found");
 
         let signature = Signature::now(&gitconfig.user.name, &gitconfig.user.email)
             .expect("cannot compute signature");

@@ -1,20 +1,16 @@
-use std::{fs::File, io::Read, path::Path};
-
-use serde::Deserialize;
-
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct GitConfig {
     pub user: User,
     pub core: Core,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct User {
     pub email: String,
     pub name: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct Core {
     pub editor: String,
 }
@@ -24,21 +20,24 @@ impl GitConfig {
     ///
     /// If the .gitconfig is not found, the function will try to load the gitconfig from the parent directory
     /// until there is no more parent
-    pub fn from_directory(path: &Path) -> Result<GitConfig, ()> {
-        let file = path.join(".gitconfig");
-        let file = File::open(file);
-        match file {
-            Ok(mut file) => {
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)
-                    .expect("Failed to read the file.");
-                let git_config: GitConfig = toml::from_str(&contents).map_err(|_| ())?;
-                Ok(git_config)
-            }
-            Err(_) => {
-                let path = path.parent().ok_or(())?;
-                Self::from_directory(path)
-            }
-        }
+    pub fn open() -> Result<GitConfig, ()> {
+        let config = git2::Config::open_default().map_err(|_| ())?;
+
+        let email = config
+            .get_string("user.email")
+            .map_err(|_| println!("email not found in configuration"))?;
+
+        let name = config
+            .get_string("user.name")
+            .map_err(|_| println!("name not found in configuration"))?;
+
+        let editor = config
+            .get_string("core.editor")
+            .map_err(|_| println!("editor not found in configuration"))?;
+
+        Ok(Self {
+            user: User { email, name },
+            core: Core { editor },
+        })
     }
 }

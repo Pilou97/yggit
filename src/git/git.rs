@@ -1,8 +1,8 @@
 use super::config::GitConfig;
 use auth_git2::GitAuthenticator;
 use git2::{
-    Branch, BranchType, Cred, CredentialType, Error, FetchOptions, Oid, RebaseOperationType,
-    RebaseOptions, RemoteCallbacks, Repository, Signature,
+    Branch, BranchType, Cred, CredentialType, Error, Oid, RebaseOperationType, RebaseOptions,
+    RemoteCallbacks, Repository, Signature,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{path::Path, process::Command, thread::sleep, time::Duration};
@@ -156,12 +156,14 @@ impl Git {
             .and_then(|reference| reference.peel_to_commit().ok());
 
         // Fetch the branch
-        let mut options = FetchOptions::new();
-        options.remote_callbacks(self.remote_callback());
-
-        remote
-            .fetch(&[branch], Some(&mut options), Some("fetch branch"))
-            .expect("Fetching repository");
+        self.auth
+            .fetch(
+                &self.repository,
+                &mut remote,
+                &[branch],
+                Some("fetch branch"),
+            )
+            .expect("fetch repository has fialed");
 
         // Get the new head
         let remote_commit = repository

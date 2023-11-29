@@ -1,9 +1,6 @@
 use super::config::GitConfig;
 use auth_git2::GitAuthenticator;
-use git2::{
-    Branch, BranchType, Cred, CredentialType, Error, Oid, RebaseOperationType, RebaseOptions,
-    RemoteCallbacks, Repository, Signature,
-};
+use git2::{Branch, BranchType, Oid, RebaseOperationType, RebaseOptions, Repository, Signature};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{path::Path, process::Command, thread::sleep, time::Duration};
 
@@ -101,26 +98,6 @@ impl Git {
         }
         commits.reverse();
         commits
-    }
-
-    /// The callback to authenticate users
-    ///
-    /// For now, it only supports ssh
-    fn auth_callback(
-        &self,
-    ) -> impl FnMut(&str, Option<&str>, CredentialType) -> Result<Cred, Error> {
-        let private_key = self.config.yggit.private_key.clone();
-        move |_, _, _| {
-            let path = Path::new(&private_key);
-            Cred::ssh_key("git", None, path, None)
-        }
-    }
-
-    /// Returns the remote callback
-    fn remote_callback(&self) -> RemoteCallbacks {
-        let mut remote_callbacks = RemoteCallbacks::new();
-        remote_callbacks.credentials(self.auth_callback());
-        remote_callbacks
     }
 
     /// Returns the local id of the head of origin/{branch}

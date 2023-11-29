@@ -286,12 +286,19 @@ impl Git {
             return Err(());
         };
 
-        self.repository
-            .branch(branch, &commit, true)
-            .map(|_| ())
-            .map_err(|err| {
-                println!("{:?}", err);
-            })
+        let res = self.repository.branch(branch, &commit, true);
+        match res {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                let code = err.message();
+                let is_ok = code.contains("as it is the current HEAD of the repository.");
+                if is_ok {
+                    Ok(()) // Not the best but it works
+                } else {
+                    Err(())
+                }
+            }
+        }
     }
 
     /// Open the given file with the user's editor and returns the content of this file

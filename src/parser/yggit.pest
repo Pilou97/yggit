@@ -7,12 +7,8 @@ origin = { ASCII_ALPHANUMERIC+ }
 branch_name = { (ASCII_ALPHANUMERIC | "@" | "-" | "_" | "/")+ }
 target = { branch_tag ~ WHITE_SPACE* ~ (origin ~ ":")? ~ branch_name ~ NEWLINE}
 
-test_tag = _{ "$" }
-command = { (!NEWLINE ~ ANY)+ }
-test = { test_tag ~ WHITE_SPACE+ ~ command ~ NEWLINE }
-
 commit = {
-    git_commit ~ (target ~ NEWLINE*){, 1} ~ test* ~ NEWLINE*
+    git_commit ~ (target ~ NEWLINE*){, 1} ~ NEWLINE*
 }
 
 commits = { commit+ }

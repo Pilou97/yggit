@@ -13,7 +13,6 @@ pub struct Push {
 #[derive(Deserialize, Serialize)]
 pub struct Note {
     pub push: Option<Push>,
-    pub tests: Vec<String>,
 }
 
 /// Save the note to the commit
@@ -22,14 +21,9 @@ pub struct Note {
 pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
     for commit in commits {
         // Extract information from commit
-        let crate::parser::Commit {
-            hash,
-            target,
-            tests,
-            ..
-        } = commit;
+        let crate::parser::Commit { hash, target, .. } = commit;
 
-        let is_empty = target.is_none() && tests.is_empty();
+        let is_empty = target.is_none();
 
         if is_empty {
             git.delete_note(&hash);
@@ -37,7 +31,6 @@ pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
             // Create the note
             let note = Note {
                 push: target.map(|Target { origin, branch }| Push { origin, branch }),
-                tests,
             };
 
             // Save the note
@@ -103,41 +96,4 @@ pub fn push_from_notes(git: &Git) {
         git.push_force(origin, branch);
         println!("\r{}:{} pushed", origin, branch);
     }
-}
-
-pub fn execute_tests_from_notes(git: &Git) -> Result<(), ()> {
-    let main = git.main_branch().unwrap();
-
-    git.rebase(main, |oid, git| {
-        let commit = git.find_commit::<Note>(oid).unwrap();
-
-        let note = match commit.note {
-            None => return Ok(()),
-            Some(note) => note,
-        };
-
-        for command in note.tests {
-            let status = std::process::Command::new("sh")
-                .arg("-c")
-                .arg(&command)
-                .status();
-
-            match status {
-                Ok(status) => match status.success() {
-                    true => {
-                        continue;
-                    }
-                    false => {
-                        println!("{} :failed", &command);
-                        return Err(());
-                    }
-                },
-                Err(_) => {
-                    println!("{} :failed", &command);
-                    return Err(());
-                }
-            }
-        }
-        Ok(())
-    })
 }

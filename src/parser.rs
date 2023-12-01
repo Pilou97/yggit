@@ -12,12 +12,9 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     let mut output = String::default();
     for commit in commits {
         output = format!("{}{} {}\n", output, commit.id, commit.title);
-        if let Some(Note { push, tests }) = commit.note {
+        if let Some(Note { push }) = commit.note {
             if let Some(Push { origin, branch }) = &push {
                 output = format!("{}-> {}:{}\n", output, origin, branch);
-            }
-            for command in tests {
-                output = format!("{}$ {}\n", output, command);
             }
             // An empty line is added so that is cleaner to differentiate the different MR
             if push.is_some() {
@@ -44,7 +41,6 @@ pub struct Commit {
     #[allow(dead_code)]
     pub title: String,
     pub target: Option<Target>,
-    pub tests: Vec<String>,
 }
 
 fn parse_target(pair: Pair<Rule>) -> Option<Target> {
@@ -72,10 +68,6 @@ fn parse_target(pair: Pair<Rule>) -> Option<Target> {
     })
 }
 
-fn parse_test(pair: Pair<Rule>) -> String {
-    pair.into_inner().next().unwrap().as_str().to_string()
-}
-
 fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
     let mut commit = pair.into_inner();
 
@@ -89,28 +81,18 @@ fn parse_commit(pair: Pair<Rule>) -> Option<Commit> {
     let title = title.as_str();
 
     let mut target = None;
-    let mut tests = Vec::default();
 
     // Optional target
     for pair in commit {
-        match pair.as_rule() {
-            Rule::target => {
-                target = parse_target(pair);
-            }
-            Rule::test => {
-                let test = parse_test(pair);
-                tests.push(test);
-            }
-            _ => (),
+        if let Rule::target = pair.as_rule() {
+            target = parse_target(pair);
         }
     }
 
-    let _ = tests;
     Some(Commit {
         hash,
         title: title.to_string(),
         target,
-        tests,
     })
 }
 

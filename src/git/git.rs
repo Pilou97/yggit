@@ -5,8 +5,8 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{path::Path, process::Command};
 
 pub struct Git {
-    pub repository: Repository,
-    pub signature: Signature<'static>,
+    repository: Repository,
+    signature: Signature<'static>,
     config: GitConfig,
     auth: GitAuthenticator,
 }

@@ -15,9 +15,10 @@ const COMMENTS: &str = r#"
 # 
 # Commands:
 # -> <branch> add a branch to the above commit
+# -> <origin>:<branch> add a branch to the above commit
 # 
 # What happens next?
-#  - All branches are pushed
+#  - All branches are pushed on origin, except if you specified a custom origin
 #
 # It's not a rebase, you can't edit commits nor reorder them
 "#;

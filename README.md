@@ -25,3 +25,7 @@ I can also specify a custom upstream:
 ```bash
 -> origin:mybranch-name
 ```
+
+# Warning
+
+This project is poorly tested, use it at your own risk.

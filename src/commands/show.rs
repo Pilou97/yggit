@@ -10,8 +10,7 @@ const COMMENTS: &str = r#"
 "#;
 
 impl Show {
-    pub fn execute(&self) -> Result<(), ()> {
-        let git = Git::open(".");
+    pub fn execute(&self, git: Git) -> Result<(), ()> {
         let commits = git.list_commits();
         let output = commits_to_string(commits);
 

@@ -5,8 +5,6 @@ use crate::{
 };
 use clap::Args;
 
-use super::Execute;
-
 #[derive(Debug, Args)]
 pub struct Push {}
 
@@ -23,8 +21,8 @@ const COMMENTS: &str = r#"
 # It's not a rebase, you can't edit commits nor reorder them
 "#;
 
-impl Execute for Push {
-    fn execute(&self) -> Result<(), ()> {
+impl Push {
+    pub fn execute(&self) -> Result<(), ()> {
         let git = Git::open(".");
 
         let commits = git.list_commits();

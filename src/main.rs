@@ -2,6 +2,7 @@ use clap::Parser;
 use clap::Subcommand;
 use commands::push::Push;
 use commands::show::Show;
+use git::Git;
 
 mod commands;
 mod core;
@@ -25,8 +26,10 @@ enum Commands {
 fn main() {
     let args = Cli::parse();
 
+    let git = Git::open(".");
+
     let _ = match args.command {
-        Commands::Push(push) => push.execute(),
-        Commands::Show(show) => show.execute(),
+        Commands::Push(push) => push.execute(git),
+        Commands::Show(show) => show.execute(git),
     };
 }

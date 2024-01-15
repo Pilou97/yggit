@@ -35,6 +35,15 @@ impl GitConfig {
             .get_string("core.editor")
             .map_err(|_| println!("editor not found in configuration"))?;
 
+        // Force rewriteRef = "refs/notes/commits" to exist
+        let rewrite_ref = config
+            .get_string("notes.rewriteRef")
+            .map_err(|_| println!("editor not found in configuration"))?;
+        if rewrite_ref != "refs/notes/commits" {
+            println!("rewriteRef should be set to \"refs/notes/commits\"");
+            return Err(());
+        }
+
         Ok(Self {
             user: User { email, name },
             core: Core { editor },

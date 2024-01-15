@@ -13,8 +13,18 @@ pub fn commits_to_string(commits: Vec<EnhancedCommit<Note>>) -> String {
     for commit in commits {
         output = format!("{}{} {}\n", output, commit.id, commit.title);
         if let Some(Note { push }) = commit.note {
-            if let Some(Push { origin, branch }) = &push {
+            if let Some(Push {
+                origin: Some(origin),
+                branch,
+            }) = &push
+            {
                 output = format!("{}-> {}:{}\n", output, origin, branch);
+            } else if let Some(Push {
+                origin: None,
+                branch,
+            }) = &push
+            {
+                output = format!("{}-> {}\n", output, branch);
             }
             // An empty line is added so that is cleaner to differentiate the different MR
             if push.is_some() {
@@ -31,7 +41,7 @@ struct YggitParser;
 
 #[derive(Debug, Clone)]
 pub struct Target {
-    pub origin: String,
+    pub origin: Option<String>,
     pub branch: String,
 }
 
@@ -46,13 +56,13 @@ pub struct Commit {
 fn parse_target(pair: Pair<Rule>) -> Option<Target> {
     let target = pair.into_inner();
 
-    let mut parsed_origin = "origin".into();
+    let mut parsed_origin = None;
     let mut parsed_branch = None;
 
     for pair in target.into_iter() {
         match pair.as_rule() {
             Rule::origin => {
-                parsed_origin = pair.as_str().to_string();
+                parsed_origin = Some(pair.as_str().to_string());
             }
             Rule::branch_name => {
                 parsed_branch = Some(pair.as_str().to_string());

@@ -2,6 +2,7 @@
 pub struct GitConfig {
     pub user: User,
     pub core: Core,
+    pub yggit: Yggit,
 }
 
 #[derive(Debug)]
@@ -13,6 +14,12 @@ pub struct User {
 #[derive(Debug)]
 pub struct Core {
     pub editor: String,
+}
+
+#[derive(Debug)]
+pub struct Yggit {
+    // Default upstream of a branch
+    pub default_upstream: String,
 }
 
 impl GitConfig {
@@ -44,9 +51,14 @@ impl GitConfig {
             return Err(());
         }
 
+        let default_upstream = config
+            .get_string("yggit.defaultUpstream")
+            .unwrap_or("origin".to_string());
+
         Ok(Self {
             user: User { email, name },
             core: Core { editor },
+            yggit: Yggit { default_upstream },
         })
     }
 }

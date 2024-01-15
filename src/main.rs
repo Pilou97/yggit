@@ -2,7 +2,6 @@ use clap::Parser;
 use clap::Subcommand;
 use commands::push::Push;
 use commands::show::Show;
-use commands::Execute;
 
 mod commands;
 mod core;

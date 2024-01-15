@@ -7,7 +7,7 @@ use std::{path::Path, process::Command};
 pub struct Git {
     repository: Repository,
     signature: Signature<'static>,
-    config: GitConfig,
+    pub config: GitConfig,
     auth: GitAuthenticator,
 }
 

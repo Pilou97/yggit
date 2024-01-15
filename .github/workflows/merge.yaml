@@ -1,0 +1,22 @@
+name: Merge Request
+run-name: Testing if mergeable
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run formatter
+        run: cargo fmt
+      - name: Run linter
+        run: cargo clippy -- --deny warnings
+      - name: Run tests
+        run: cargo test
+      - name: Build the project
+        run: cargo build --release
+
+    

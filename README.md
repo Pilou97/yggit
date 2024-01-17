@@ -29,3 +29,7 @@ I can also specify a custom upstream:
 # Warning
 
 This project is poorly tested, use it at your own risk.
+
+# Acknowledgements
+
+This project was greatly inspired by [anger](https://github.com/d4hines/anger) by [d4hines](https://github.com/d4hines).

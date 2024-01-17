@@ -1,0 +1,33 @@
+name: Release
+run-name: Releasing Yggit on crates.io
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**' # TODO: add a good pattern match on version XX.XX.XX
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags')
+    steps:
+      - uses: actions/checkout@v3
+      - name: Installing cargo-edit
+        run: cargo install cargo-edit 
+      # TODO: check if tag is superior than the current version
+      - name: Set the version to the tag value
+        run: cargo set-version $GITHUB_REF_NAME
+      - name: build
+        run: cargo build
+      - name: commit the version
+        run: | 
+          git config --global user.email "release-bot@pilou.dev"
+          git config --global user.name "pilou"
+          git add . 
+          git commit -m "release $GITHUB_REF_NAME"
+      - name: cargo login
+        run: cargo login ${{ secrets.CRATES_IO_API_TOKEN }}
+      - name: Publishing
+        run: cargo publish
+      # TODO: Do we need to push a commit for the release?

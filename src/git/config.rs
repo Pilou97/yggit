@@ -38,9 +38,12 @@ impl GitConfig {
             .get_string("user.name")
             .map_err(|_| println!("name not found in configuration"))?;
 
-        let editor = config
-            .get_string("core.editor")
-            .map_err(|_| println!("editor not found in configuration"))?;
+        let editor = (match config.get_string("core.editor") {
+            Ok(editor) => Ok(editor),
+            Err(_) => {
+                std::env::var("EDITOR").map_err(|_| println!("editor not found in configuration"))
+            }
+        })?;
 
         // Force rewriteRef = "refs/notes/commits" to exist
         let rewrite_ref = config

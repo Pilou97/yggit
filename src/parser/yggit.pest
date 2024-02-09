@@ -1,5 +1,5 @@
 commit_hash = { ASCII_HEX_DIGIT{40} }
-commit_title = { (ASCII_ALPHANUMERIC | "@" | "-" | "_" | "/" | ":" | " " | "!")+ }
+commit_title = { (ASCII_ALPHANUMERIC | "@" | "-" | "_" | "/" | ":" | " " | "!" | "(" | ")" | "#")+ }
 git_commit = {commit_hash ~ WHITE_SPACE ~ commit_title ~ NEWLINE}
 
 branch_tag = _{ "->" }

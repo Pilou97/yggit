@@ -281,6 +281,7 @@ impl Git {
 
     /// Set the head of the given branch to the given commit
     pub fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), ()> {
+        println!("Setting branch {} to commit {:?}", branch, oid); 
         let Ok(commit) = self.repository.find_commit(oid) else {
             println!("commit does not exist");
             return Err(());

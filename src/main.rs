@@ -2,6 +2,7 @@ use clap::Parser;
 use clap::Subcommand;
 use commands::push::Push;
 use commands::show::Show;
+use commands::apply::Apply;
 use git::Git;
 
 mod commands;
@@ -21,6 +22,7 @@ struct Cli {
 enum Commands {
     Push(Push),
     Show(Show),
+    Apply(Apply)
 }
 
 fn main() {
@@ -31,5 +33,6 @@ fn main() {
     let _ = match args.command {
         Commands::Push(push) => push.execute(git),
         Commands::Show(show) => show.execute(git),
+        Commands::Apply(apply) => apply.execute(git),
     };
 }

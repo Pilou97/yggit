@@ -1,12 +1,12 @@
 use crate::{
-    core::{apply, push_from_notes, save_note},
+    core::{save_note, apply},
     git::Git,
     parser::{commits_to_string, instruction_from_string},
 };
 use clap::Args;
 
 #[derive(Debug, Args)]
-pub struct Push {}
+pub struct Apply {}
 
 const COMMENTS: &str = r#"
 # Here is how to use yggit
@@ -21,7 +21,7 @@ const COMMENTS: &str = r#"
 # It's not a rebase, you can't edit commits nor reorder them
 "#;
 
-impl Push {
+impl Apply {
     pub fn execute(&self, git: Git) -> Result<(), ()> {
         let commits = git.list_commits();
         let output = commits_to_string(commits);
@@ -38,8 +38,8 @@ impl Push {
         })?;
 
         save_note(&git, commits);
+
         apply(&git);
-        push_from_notes(&git);
 
         Ok(())
     }

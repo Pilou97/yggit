@@ -39,11 +39,9 @@ pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
     }
 }
 
-/// Execute the push instructions from the notes
-///
-/// Change the head of the given branches
-/// Push the branches to origin
-pub fn push_from_notes(git: &Git) {
+/// Execute the instructions from the notes
+/// to change the head of the given branches
+pub fn apply(git: &Git) {
     let commits = git.list_commits();
 
     // Update the commits
@@ -63,7 +61,11 @@ pub fn push_from_notes(git: &Git) {
         // Set the head of the branch to the given commit
         git.set_branch_to_commit(branch, *id).unwrap(); // TODO: manage error
     }
+}
 
+/// Push the branches to origin
+pub fn push_from_notes(git: &Git) {
+    let commits = git.list_commits();
     // Push everything
     for commit in &commits {
         let EnhancedCommit {

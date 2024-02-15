@@ -26,6 +26,7 @@ jobs:
           git config --global user.name "pilou"
           git add . 
           git commit -m "release $GITHUB_REF_NAME"
+          git push
       - name: cargo login
         run: cargo login ${{ secrets.CRATES_IO_API_TOKEN }}
       - name: Publishing

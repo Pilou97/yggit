@@ -129,3 +129,31 @@ pub fn instruction_from_string(input: String) -> Option<Vec<Commit>> {
 
     Some(commits)
 }
+
+#[cfg(test)]
+mod test {
+    use pest::Parser;
+
+    use super::{Rule, YggitParser};
+
+    #[test]
+    fn test_hash() {
+        let input = "f8fa32837b2f1438a3a55a9341002920ace7978c";
+        let result = YggitParser::parse(Rule::commit_hash, &input).unwrap();
+        assert_eq!(result.as_str(), input)
+    }
+
+    #[test]
+    fn test_commit_title() {
+        let input = "project: add .vscode in gitignore";
+        let result = YggitParser::parse(Rule::commit_title, &input).unwrap();
+        assert_eq!(result.as_str(), input)
+    }
+
+    #[test]
+    fn test_git_commit() {
+        let input = "f8fa32837b2f1438a3a55a9341002920ace7978c project: add .vscode in gitignore\n";
+        let result = YggitParser::parse(Rule::git_commit, &input).unwrap();
+        assert_eq!(result.as_str(), input)
+    }
+}

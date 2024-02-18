@@ -11,8 +11,8 @@ mod git;
 mod parser;
 
 #[derive(Debug, Parser)] // requires `derive` feature
-#[command(name = "git")]
-#[command(about = "A fictional versioning CLI", long_about = None)]
+#[command(name = "yggit")]
+#[command(version, about = "Git project manager", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

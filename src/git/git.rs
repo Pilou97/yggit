@@ -268,25 +268,16 @@ impl Git {
 
     /// Set the head of the given branch to the given commit
     pub fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), ()> {
-        println!("Setting branch {} to commit {:?}", branch, oid); 
-        let Ok(commit) = self.repository.find_commit(oid) else {
-            println!("commit does not exist");
-            return Err(());
-        };
+        let commit = self
+            .repository
+            .find_commit(oid)
+            .map_err(|err| println!("{:?}", err))?;
 
-        let res = self.repository.branch(branch, &commit, true);
-        match res {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                let code = err.message();
-                let is_ok = code.contains("as it is the current HEAD of the repository.");
-                if is_ok {
-                    Ok(()) // Not the best but it works
-                } else {
-                    Err(())
-                }
-            }
-        }
+        self.repository
+            .branch(branch, &commit, true)
+            .map_err(|err| println!("{:?}", err))?;
+
+        Ok(())
     }
 
     /// Open the given file with the user's editor and returns the content of this file

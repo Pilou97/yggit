@@ -84,22 +84,6 @@ pub fn push_from_notes(git: &Git) {
             .clone()
             .unwrap_or(git.config.yggit.default_upstream.clone());
 
-        let local_remote_commit = git.find_local_remote_head(&origin, branch);
-        let remote_commit = git.find_remote_head(&origin, branch);
-        let local_commit = git.head_of(branch);
-
-        if local_remote_commit != remote_commit {
-            println!("cannot push {}", branch);
-            return;
-        }
-
-        if local_commit == remote_commit {
-            println!("{}:{} is up to date", origin, branch);
-            continue;
-        }
-
-        println!("pushing {}:{}", origin, branch);
-        git.push_force(&origin, branch);
-        println!("\r{}:{} pushed", origin, branch);
+        git.push_force_with_lease(&origin, branch);
     }
 }

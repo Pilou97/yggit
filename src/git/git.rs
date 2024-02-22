@@ -2,7 +2,7 @@ use super::config::GitConfig;
 use auth_git2::GitAuthenticator;
 use git2::{Branch, BranchType, Oid, Repository, Signature};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{path::Path, process::Command};
+use std::process::Command;
 
 pub struct Git {
     repository: Repository,
@@ -20,25 +20,12 @@ pub struct EnhancedCommit<N> {
 }
 
 impl Git {
-    /// Try to find a repository in the given path
-    /// Otherwise, it tries to open the parent directory
-    fn find_repository(path: &Path) -> Repository {
-        let repository = Repository::open(path);
-        match repository {
-            Ok(repository) => repository,
-            Err(_) => {
-                let path = path.parent().expect("repository not found");
-                Self::find_repository(path)
-            }
-        }
-    }
-
     /// Open a repository at the given path
     /// Also load the signature from the .gitconfig
     pub fn open(path: &str) -> Self {
         let current_dir = std::env::current_dir().expect("cannot open current directory");
         let path = current_dir.join(path);
-        let repository = Self::find_repository(path.as_path());
+        let repository = Repository::discover(path).expect("repository not found");
         let gitconfig = GitConfig::open().expect("git config not found");
 
         let signature = Signature::now(&gitconfig.user.name, &gitconfig.user.email)

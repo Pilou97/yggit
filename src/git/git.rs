@@ -1,6 +1,6 @@
 use super::config::GitConfig;
 use auth_git2::GitAuthenticator;
-use git2::{Branch, BranchType, Oid, Repository, Signature};
+use git2::{Branch, BranchType, Error, Oid, Repository, Signature};
 use serde::{de::DeserializeOwned, Serialize};
 use std::process::Command;
 
@@ -17,6 +17,13 @@ pub struct EnhancedCommit<N> {
     pub title: String,
     pub description: Option<String>,
     pub note: Option<N>,
+}
+
+#[allow(dead_code)]
+enum PushMode {
+    Normal,
+    Force,
+    ForceWithLease,
 }
 
 impl Git {
@@ -87,121 +94,83 @@ impl Git {
         commits
     }
 
-    /// Returns the local id of the head of origin/{branch}
-    pub fn find_local_remote_head(&self, origin: &str, branch: &str) -> Option<Oid> {
-        let Self { repository, .. } = self;
-        // Get the reference of the branch
-        let reference = format!("refs/remotes/{}/{}", origin, branch);
-
-        // Get the head of this branch
-        repository
-            .find_reference(&reference)
-            .ok()
-            .and_then(|reference| reference.peel_to_commit().ok())
-            .map(|commit| commit.id())
-    }
-
-    /// Returns the remote head of origin/{branch}
-    ///
-    /// It will fetch the repository
-    /// Get the head
-    /// Revert the fetch
-    pub fn find_remote_head(&self, origin: &str, branch: &str) -> Option<Oid> {
-        let Self { repository, .. } = self;
-        // Get the remote
-        let mut remote = repository.find_remote(origin).expect("remote not found");
-        // Get the reference of the branch
-        let reference = format!("refs/remotes/{}/{}", origin, branch);
-
-        // Get the head of this branch
-        let local_commit = repository
-            .find_reference(&reference)
-            .ok()
-            .and_then(|reference| reference.peel_to_commit().ok());
-
-        // Fetch the branch
-        self.auth
-            .fetch(
-                &self.repository,
-                &mut remote,
-                &[branch],
-                Some("fetch branch"),
-            )
-            .expect("fetch repository has fialed");
-
-        // Get the new head
-        let remote_commit = repository
-            .find_reference(&reference)
-            .ok()
-            .and_then(|reference| reference.peel_to_commit().ok());
-
-        // Get the reference object to the reference
-        let reference = repository.find_reference(&reference).ok();
-
-        // Change the reference to the old commit to revert the fetch
-
-        match (local_commit, remote_commit, reference) {
-            (None, None, None) => None,
-            (None, None, Some(_)) => {
-                println!("remote and reference should exists possible");
-                None
-            }
-            (None, Some(_), None) => {
-                println!("odd");
-                None
-            }
-            (None, Some(remote_commit), Some(_)) => {
-                println!("No local commits, but remote one");
-                Some(remote_commit.id())
-            }
-            (Some(_), None, None) => None,
-            (Some(local_commit), None, Some(mut reference)) => {
-                reference
-                    .set_target(local_commit.id(), "revert fetch")
-                    .expect("revert fetch error");
-                println!("reference and remote should exists");
-                None
-            }
-            (Some(_), Some(remote_commit), None) => {
-                println!("local commit exists, remote too, but no references...");
-                Some(remote_commit.id())
-            }
-            (Some(local_commit), Some(remote_commit), Some(mut reference)) => {
-                reference
-                    .set_target(local_commit.id(), "revert fetch")
-                    .expect("revert fetch error");
-                Some(remote_commit.id())
-            }
-        }
-    }
-
-    ///  Returns the commit to head of branch and head of branch/origin
-    pub fn head_of(&self, branch: &str) -> Option<Oid> {
-        let local_reference_name = format!("refs/heads/{}", branch);
-
-        // Get the local commit
-        self.repository
-            .find_reference(&local_reference_name)
-            .ok()
-            .and_then(|reference| reference.peel_to_commit().ok())
-            .map(|commit| commit.id())
-    }
-
-    /// Push force a branch
-    pub fn push_force(&self, origin: &str, branch: &str) {
+    fn push(&self, origin: &str, branch: &str, mode: PushMode) {
+        println!("pushing {}:{}", origin, branch);
         let fetch_refname = format!("refs/heads/{}", branch);
+        let git_config = self.repository.config().unwrap();
+        let mut push_options = git2::PushOptions::new();
+
+        let mut remote_callbacks = git2::RemoteCallbacks::new();
+        remote_callbacks.credentials(self.auth.credentials(&git_config));
+
+        remote_callbacks.push_negotiation(|remote_updates| {
+            let null = git2::Oid::zero();
+            for remote_update in remote_updates {
+                // It's a new branch
+                if remote_update.src() == null {
+                    println!("{}:{} is a new branch", origin, branch);
+                    return Ok(());
+                }
+                // No need to push
+                if remote_update.src() == remote_update.dst() {
+                    println!("{}:{} is up to date", origin, branch);
+                    return Err(git2::Error::from_str("no need to push"));
+                }
+                return match mode {
+                    PushMode::Normal => {
+                        // last commit of remote has to be known in current branch
+                        Err(Error::from_str("not yet implemented"))
+                    }
+                    PushMode::Force => Ok(()),
+                    PushMode::ForceWithLease => {
+                        // Comparing src with local origin
+                        let remote_origin_oid = remote_update.src();
+                        // Get the head of this branch
+                        let local_origin_oid = {
+                            let local_origin_name = remote_update.src_refname().unwrap();
+                            let upstream_name =
+                                local_origin_name.strip_prefix("refs/heads/").unwrap();
+                            self.repository
+                                .find_reference(&format!(
+                                    "refs/remotes/{}/{}",
+                                    origin, upstream_name
+                                ))
+                                .ok()
+                                .and_then(|reference| reference.peel_to_commit().ok())
+                                .map(|commit| commit.id())
+                                .unwrap()
+                        };
+                        if remote_origin_oid == local_origin_oid {
+                            Ok(())
+                        } else {
+                            println!("{}:{} have diverged, not pushing", origin, branch);
+                            Err(Error::from_str("Origins have divered"))
+                        }
+                    }
+                };
+            }
+            println!("There were no negotiation");
+            Err(git2::Error::from_str("No negotiation"))
+        });
+
+        push_options.remote_callbacks(remote_callbacks);
+
         let mut remote = self
             .repository
             .find_remote(origin)
             .expect("Cannot find origin");
+        let result = remote.push(
+            &[format!("+{}", fetch_refname).as_str()],
+            Some(&mut push_options),
+        );
+        if result.is_ok() {
+            println!("{}:{} pushed", origin, branch);
+        }
+        return;
+    }
 
-        self.auth
-            .push(
-                &self.repository,
-                &mut remote,
-                &[format!("+{}", fetch_refname).as_str()],
-            )
-            .expect("push force failed");
+    pub fn push_force_with_lease(&self, origin: &str, branch: &str) {
+        self.push(origin, branch, PushMode::ForceWithLease)
     }
 
     /// Delete a note

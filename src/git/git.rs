@@ -63,7 +63,7 @@ impl Git {
         None
     }
 
-    /// List the commit in a repository and the attached note
+    /// List the commit in a repository with the attached note
     pub fn list_commits<N>(&self) -> Vec<EnhancedCommit<N>>
     where
         N: DeserializeOwned,
@@ -105,7 +105,7 @@ impl Git {
 
         remote_callbacks.push_negotiation(|remote_updates| {
             let null = git2::Oid::zero();
-            for remote_update in remote_updates {
+            if let Some(remote_update) = remote_updates.iter().next() {
                 // It's a new branch
                 if remote_update.src() == null {
                     println!("{}:{} is a new branch", origin, branch);
@@ -143,7 +143,7 @@ impl Git {
                         if remote_origin_oid == local_origin_oid {
                             Ok(())
                         } else {
-                            println!("{}:{} have diverged, not pushing", origin, branch);
+                            println!("{}:{} has diverged, not pushing", origin, branch);
                             Err(Error::from_str("Origins have divered"))
                         }
                     }
@@ -166,7 +166,6 @@ impl Git {
         if result.is_ok() {
             println!("{}:{} pushed", origin, branch);
         }
-        return;
     }
 
     pub fn push_force_with_lease(&self, origin: &str, branch: &str) {

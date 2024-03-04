@@ -1,8 +1,8 @@
 use clap::Parser;
 use clap::Subcommand;
+use commands::apply::Apply;
 use commands::push::Push;
 use commands::show::Show;
-use commands::apply::Apply;
 use git::Git;
 
 mod commands;
@@ -22,17 +22,18 @@ struct Cli {
 enum Commands {
     Push(Push),
     Show(Show),
-    Apply(Apply)
+    Apply(Apply),
 }
 
 fn main() {
     let args = Cli::parse();
 
-    let git = Git::open(".");
+    let git = Git::open(".").unwrap();
 
-    let _ = match args.command {
+    match args.command {
         Commands::Push(push) => push.execute(git),
         Commands::Show(show) => show.execute(git),
         Commands::Apply(apply) => apply.execute(git),
-    };
+    }
+    .unwrap()
 }

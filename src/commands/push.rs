@@ -3,6 +3,7 @@ use crate::{
     git::Git,
     parser::{commits_to_string, instruction_from_string},
 };
+use anyhow::{Context, Result};
 use clap::Args;
 
 #[derive(Debug, Args)]
@@ -22,24 +23,22 @@ const COMMENTS: &str = r#"
 "#;
 
 impl Push {
-    pub fn execute(&self, git: Git) -> Result<(), ()> {
-        let commits = git.list_commits();
+    pub fn execute(&self, git: Git) -> Result<()> {
+        let commits = git.list_commits()?;
         let output = commits_to_string(commits);
 
         let file_path = "/tmp/yggit";
 
         let output = format!("{}\n{}", output, COMMENTS);
-        std::fs::write(file_path, output).map_err(|_| println!("cannot write file to disk"))?;
+        std::fs::write(file_path, output).context("cannot write file to disk")?;
 
         let content = git.edit_file(file_path)?;
 
-        let commits = instruction_from_string(content).ok_or_else(|| {
-            println!("Cannot parse instructions");
-        })?;
+        let commits = instruction_from_string(content).context("Cannot parse instruction")?;
 
-        save_note(&git, commits);
-        apply(&git);
-        push_from_notes(&git);
+        save_note(&git, commits)?;
+        apply(&git)?;
+        push_from_notes(&git)?;
 
         Ok(())
     }

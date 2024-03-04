@@ -63,7 +63,7 @@ impl Git {
         None
     }
 
-    /// List the commit in a repository and the attached note
+    /// List the commit in a repository with the attached note
     pub fn list_commits<N>(&self) -> Vec<EnhancedCommit<N>>
     where
         N: DeserializeOwned,
@@ -143,7 +143,7 @@ impl Git {
                         if remote_origin_oid == local_origin_oid {
                             Ok(())
                         } else {
-                            println!("{}:{} have diverged, not pushing", origin, branch);
+                            println!("{}:{} has diverged, not pushing", origin, branch);
                             Err(Error::from_str("Origins have divered"))
                         }
                     }

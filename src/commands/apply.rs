@@ -1,8 +1,9 @@
 use crate::{
-    core::{save_note, apply},
+    core::{apply, save_note},
     git::Git,
     parser::{commits_to_string, instruction_from_string},
 };
+use anyhow::{Context, Result};
 use clap::Args;
 
 #[derive(Debug, Args)]
@@ -22,24 +23,22 @@ const COMMENTS: &str = r#"
 "#;
 
 impl Apply {
-    pub fn execute(&self, git: Git) -> Result<(), ()> {
-        let commits = git.list_commits();
+    pub fn execute(&self, git: Git) -> Result<()> {
+        let commits = git.list_commits()?;
         let output = commits_to_string(commits);
 
         let file_path = "/tmp/yggit";
 
         let output = format!("{}\n{}", output, COMMENTS);
-        std::fs::write(file_path, output).map_err(|_| println!("cannot write file to disk"))?;
+        std::fs::write(file_path, output).context("Cannot write yggit file to filesystem")?;
 
         let content = git.edit_file(file_path)?;
 
-        let commits = instruction_from_string(content).ok_or_else(|| {
-            println!("Cannot parse instructions");
-        })?;
+        let commits = instruction_from_string(content).context("Cannot parse instructions")?;
 
-        save_note(&git, commits);
+        save_note(&git, commits)?;
 
-        apply(&git);
+        apply(&git)?;
 
         Ok(())
     }

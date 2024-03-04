@@ -2,6 +2,7 @@ use crate::{
     git::{EnhancedCommit, Git},
     parser::Target,
 };
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -18,7 +19,7 @@ pub struct Note {
 /// Save the note to the commit
 ///
 /// Also deletes note if there is nothing new
-pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
+pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) -> Result<()> {
     for commit in commits {
         // Extract information from commit
         let crate::parser::Commit { hash, target, .. } = commit;
@@ -26,7 +27,7 @@ pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
         let is_empty = target.is_none();
 
         if is_empty {
-            git.delete_note(&hash);
+            git.delete_note(&hash)?;
         } else {
             // Create the note
             let note = Note {
@@ -34,15 +35,17 @@ pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) {
             };
 
             // Save the note
-            git.set_note(hash, note).unwrap();
+            git.set_note(hash, note)
+                .context("Cannot write note to commit")?;
         }
     }
+    Ok(())
 }
 
 /// Execute the instructions from the notes
 /// to change the head of the given branches
-pub fn apply(git: &Git) {
-    let commits = git.list_commits();
+pub fn apply(git: &Git) -> Result<()> {
+    let commits = git.list_commits()?;
 
     // Update the commits
     for commit in &commits {
@@ -59,13 +62,14 @@ pub fn apply(git: &Git) {
             continue;
         };
         // Set the head of the branch to the given commit
-        git.set_branch_to_commit(branch, *id).unwrap(); // TODO: manage error
+        git.set_branch_to_commit(branch, *id)?; // TODO: manage error
     }
+    Ok(())
 }
 
 /// Push the branches to origin
-pub fn push_from_notes(git: &Git) {
-    let commits = git.list_commits();
+pub fn push_from_notes(git: &Git) -> Result<()> {
+    let commits = git.list_commits()?;
     // Push everything
     for commit in &commits {
         let EnhancedCommit {
@@ -84,6 +88,7 @@ pub fn push_from_notes(git: &Git) {
             .clone()
             .unwrap_or(git.config.yggit.default_upstream.clone());
 
-        git.push_force_with_lease(&origin, branch);
+        git.push_force_with_lease(&origin, branch)?;
     }
+    Ok(())
 }

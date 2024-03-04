@@ -1,3 +1,5 @@
+use anyhow::{Context, Result};
+
 #[derive(Debug)]
 pub struct GitConfig {
     pub user: User,
@@ -27,31 +29,31 @@ impl GitConfig {
     ///
     /// If the .gitconfig is not found, the function will try to load the gitconfig from the parent directory
     /// until there is no more parent
-    pub fn open() -> Result<GitConfig, ()> {
-        let config = git2::Config::open_default().map_err(|_| ())?;
+    pub fn open() -> Result<GitConfig> {
+        let config = git2::Config::open_default().context("Cannot open git config")?;
 
         let email = config
             .get_string("user.email")
-            .map_err(|_| println!("email not found in configuration"))?;
+            .context("email not found in configuration")?;
 
         let name = config
             .get_string("user.name")
-            .map_err(|_| println!("name not found in configuration"))?;
+            .context("name not found in configuration")?;
 
         let editor = (match config.get_string("core.editor") {
             Ok(editor) => Ok(editor),
-            Err(_) => {
-                std::env::var("EDITOR").map_err(|_| println!("editor not found in configuration"))
-            }
+            Err(_) => std::env::var("EDITOR").context("editor not found in configuration"),
         })?;
 
         // Force rewriteRef = "refs/notes/commits" to exist
         let rewrite_ref = config
             .get_string("notes.rewriteRef")
-            .map_err(|_| println!("editor not found in configuration"))?;
+            .context("notes.rewriteRef wasn't found")?;
         if rewrite_ref != "refs/notes/commits" {
             println!("rewriteRef should be set to \"refs/notes/commits\"");
-            return Err(());
+            return Err(anyhow::Error::msg(
+                "rewriteRef should be set to \"refs/notes/commits\"",
+            ));
         }
 
         let default_upstream = config

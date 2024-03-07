@@ -183,6 +183,7 @@ impl Git {
         Ok(())
     }
 
+    /// Equivalent of `git push --force-with-lease`
     pub fn push_force_with_lease(&self, origin: &str, branch: &str) -> Result<()> {
         self.push(origin, branch, PushMode::ForceWithLease)
     }

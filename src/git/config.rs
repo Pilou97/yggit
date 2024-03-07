@@ -77,3 +77,242 @@ impl GitConfig {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::GitConfig;
+    use anyhow::{Context, Result};
+    use std::{fs::File, io::Write, path::Path};
+    use tempfile::TempDir;
+
+    impl GitConfig {
+        fn open(path: &Path) -> Result<GitConfig> {
+            let config = git2::Config::open(path).context("config not found")?;
+            Self::open_with_git_config(config)
+        }
+    }
+
+    #[test]
+    fn test_open() {
+        let tmp_dir = TempDir::new().expect("should be created");
+        let config = concat!(
+            "[user]\n",
+            "email = kenobi@example.com\n",
+            "name = Obi-Wan\n",
+            "[core]\n",
+            "editor = neovim\n",
+            "[notes]\n",
+            "rewriteRef = refs/notes/commits\n",
+            "[yggit]\n",
+            "defaultUpstream = origin\n"
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path).expect("should be open");
+        assert_eq!(config.user.email, "kenobi@example.com");
+        assert_eq!(config.user.name, "Obi-Wan");
+        assert_eq!(config.core.editor, "neovim");
+        assert_eq!(config.yggit.default_upstream, "origin");
+    }
+
+    #[test]
+    fn test_open_missing_email() {
+        let tmp_dir = TempDir::new().expect("should be created");
+        let config = concat!(
+            "[user]\n",
+            "name = Obi-Wan\n",
+            "[core]\n",
+            "editor = neovim\n",
+            "[notes]\n",
+            "rewriteRef = refs/notes/commits\n",
+            "[yggit]\n",
+            "defaultUpstream = origin\n"
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path);
+        assert!(config.is_err());
+        assert_eq!(
+            config.unwrap_err().to_string(),
+            "email not found in configuration"
+        )
+    }
+
+    #[test]
+    fn test_open_missing_name() {
+        let tmp_dir = TempDir::new().expect("should be created");
+        let config = concat!(
+            "[user]\n",
+            "email = kenobi@example.com\n",
+            "[core]\n",
+            "editor = neovim\n",
+            "[notes]\n",
+            "rewriteRef = refs/notes/commits\n",
+            "[yggit]\n",
+            "defaultUpstream = origin\n"
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path);
+        assert!(config.is_err());
+        assert_eq!(
+            config.unwrap_err().to_string(),
+            "name not found in configuration"
+        )
+    }
+
+    #[test]
+    fn test_open_missing_editor() {
+        let tmp_dir = TempDir::new().expect("should be created");
+        std::env::remove_var("EDITOR");
+
+        let config = concat!(
+            "[user]\n",
+            "email = kenobi@example.com\n",
+            "name = Obi-Wan\n",
+            "[notes]\n",
+            "rewriteRef = refs/notes/commits\n",
+            "[yggit]\n",
+            "defaultUpstream = origin\n"
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path);
+        assert!(config.is_err());
+        assert_eq!(
+            config.unwrap_err().to_string(),
+            "editor not found in configuration"
+        );
+
+        //  Other test that set the EDITOR var
+        let tmp_dir = TempDir::new().expect("should be created");
+        std::env::set_var("EDITOR", "emacs");
+
+        let config = concat!(
+            "[user]\n",
+            "email = kenobi@example.com\n",
+            "name = Obi-Wan\n",
+            "[notes]\n",
+            "rewriteRef = refs/notes/commits\n",
+            "[yggit]\n",
+            "defaultUpstream = origin\n"
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path).expect("should be ok");
+        assert_eq!(config.core.editor, "emacs");
+    }
+
+    #[test]
+    fn test_open_missing_rewrite_ref() {
+        let tmp_dir = TempDir::new().expect("should be created");
+
+        let config = concat!(
+            "[user]\n",
+            "email = kenobi@example.com\n",
+            "name = Obi-Wan\n",
+            "[core]\n",
+            "editor = neovim\n",
+            "[yggit]\n",
+            "defaultUpstream = origin\n"
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path);
+        assert!(config.is_err());
+        assert_eq!(
+            config.unwrap_err().to_string(),
+            "notes.rewriteRef wasn't found"
+        )
+    }
+
+    #[test]
+    fn test_open_wrong_rewrite_ref() {
+        let tmp_dir = TempDir::new().expect("should be created");
+
+        let config = concat!(
+            "[user]\n",
+            "email = kenobi@example.com\n",
+            "name = Obi-Wan\n",
+            "[core]\n",
+            "editor = neovim\n",
+            "[notes]\n",
+            "rewriteRef = wrong-value\n",
+            "[yggit]\n",
+            "defaultUpstream = origin\n"
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path);
+        assert!(config.is_err());
+        assert_eq!(
+            config.unwrap_err().to_string(),
+            "rewriteRef should be set to \"refs/notes/commits\""
+        )
+    }
+
+    #[test]
+    fn test_default_upstream() {
+        let tmp_dir = TempDir::new().expect("should be created");
+        let config = concat!(
+            "[user]\n",
+            "email = kenobi@example.com\n",
+            "name = Obi-Wan\n",
+            "[core]\n",
+            "editor = neovim\n",
+            "[notes]\n",
+            "rewriteRef = refs/notes/commits\n",
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path).expect("should be open");
+        assert_eq!(config.yggit.default_upstream, "origin");
+    }
+
+    #[test]
+    fn test_default_upstream_with_different_value() {
+        let tmp_dir = TempDir::new().expect("should be created");
+        let config = concat!(
+            "[user]\n",
+            "email = kenobi@example.com\n",
+            "name = Obi-Wan\n",
+            "[core]\n",
+            "editor = neovim\n",
+            "[notes]\n",
+            "rewriteRef = refs/notes/commits\n",
+            "[yggit]\n",
+            "defaultUpstream = upstream"
+        );
+
+        let path = tmp_dir.path().join(".gitconfig");
+        let mut file = File::create(&path).expect("gitconfig should be created");
+        file.write(config.as_bytes()).expect("should be written");
+
+        let config = GitConfig::open(&path).expect("should be open");
+        assert_eq!(config.yggit.default_upstream, "upstream");
+    }
+}

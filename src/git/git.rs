@@ -34,7 +34,7 @@ impl Git {
         let current_dir = std::env::current_dir().context("cannot open current directory")?;
         let path = current_dir.join(path);
         let repository = Repository::discover(path).context("repository not found")?;
-        let gitconfig = GitConfig::open()?;
+        let gitconfig = GitConfig::open_default()?;
 
         let signature = Signature::now(&gitconfig.user.name, &gitconfig.user.email)
             .context("cannot compute signature")?;

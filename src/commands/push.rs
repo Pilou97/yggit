@@ -7,7 +7,12 @@ use anyhow::{Context, Result};
 use clap::Args;
 
 #[derive(Debug, Args)]
-pub struct Push {}
+pub struct Push {
+    /// use --force to update branches,
+    /// by default it is using --force-with-lease
+    #[arg(short, long, default_value_t = false)]
+    force: bool,
+}
 
 const COMMENTS: &str = r#"
 # Here is how to use yggit
@@ -38,7 +43,7 @@ impl Push {
 
         save_note(&git, commits)?;
         apply(&git)?;
-        push_from_notes(&git)?;
+        push_from_notes(&git, self.force)?;
 
         Ok(())
     }

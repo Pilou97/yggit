@@ -68,7 +68,10 @@ pub fn apply(git: &Git) -> Result<()> {
 }
 
 /// Push the branches to origin
-pub fn push_from_notes(git: &Git) -> Result<()> {
+///
+/// If force is set to true it will use --force
+/// Otherwise it uses --force-with-lease
+pub fn push_from_notes(git: &Git, force: bool) -> Result<()> {
     let commits = git.list_commits()?;
     // Push everything
     for commit in &commits {
@@ -88,7 +91,12 @@ pub fn push_from_notes(git: &Git) -> Result<()> {
             .clone()
             .unwrap_or(git.config.yggit.default_upstream.clone());
 
-        git.push_force_with_lease(&origin, branch)?;
+        if force {
+            git.push_force(&origin, branch)?;
+        } else {
+            // default case
+            git.push_force_with_lease(&origin, branch)?;
+        }
     }
     Ok(())
 }

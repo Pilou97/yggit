@@ -188,6 +188,11 @@ impl Git {
         self.push(origin, branch, PushMode::ForceWithLease)
     }
 
+    /// Equivalent of `git push --force`
+    pub fn push_force(&self, origin: &str, branch: &str) -> Result<()> {
+        self.push(origin, branch, PushMode::Force)
+    }
+
     /// Delete a note
     pub fn delete_note(&self, oid: &Oid) -> Result<()> {
         self.repository

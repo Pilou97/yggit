@@ -25,13 +25,23 @@ pub struct Yggit {
 }
 
 impl GitConfig {
-    /// Load a .gitconfig from the current directory
-    ///
-    /// If the .gitconfig is not found, the function will try to load the gitconfig from the parent directory
-    /// until there is no more parent
-    pub fn open() -> Result<GitConfig> {
+    /// Try to load gitconfig from:
+    ///  - global: $HOME/.gitconfig
+    ///  - XDG: $HOME/.config/git/config
+    ///  - system: /etc/gitconfig
+    pub fn open_default() -> Result<GitConfig> {
         let config = git2::Config::open_default().context("Cannot open git config")?;
+        Self::open_with_git_config(config)
+    }
 
+    /// Parse the git config and return a Config
+    ///
+    /// It parses the following field:
+    ///  - user.email : required
+    ///  - user.name : required
+    ///  - notes.rewriteRef = "refs/notes/commits" : required
+    ///  - yggit.defaultUpstream : optional, default(origin)
+    fn open_with_git_config(config: git2::Config) -> Result<GitConfig> {
         let email = config
             .get_string("user.email")
             .context("email not found in configuration")?;

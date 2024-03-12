@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use auth_git2::GitAuthenticator;
 use git2::{Branch, BranchType, Error, Oid, Repository, Signature};
 use serde::{de::DeserializeOwned, Serialize};
-use std::process::Command;
+use std::{path::PathBuf, process::Command, str::FromStr};
 
 pub struct Git {
     repository: Repository,
@@ -30,14 +30,17 @@ impl Git {
     /// Open a repository at the given path
     /// Also load the signature from the .gitconfig
     pub fn open(path: &str) -> Result<Self> {
-        let current_dir = std::env::current_dir().context("cannot open current directory")?;
-        let path = current_dir.join(path);
+        // The path can be absolute or not
+        let path = if path.starts_with('/') {
+            PathBuf::from_str(path).context("invalid absolute path")?
+        } else {
+            let current_dir = std::env::current_dir().context("cannot open current directory")?;
+            current_dir.join(path)
+        };
         let repository = Repository::discover(path).context("repository not found")?;
         let gitconfig = GitConfig::open_default()?;
-
         let signature = Signature::now(&gitconfig.user.name, &gitconfig.user.email)
             .context("cannot compute signature")?;
-
         Ok(Git {
             repository,
             signature,

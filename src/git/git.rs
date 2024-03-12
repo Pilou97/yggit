@@ -94,9 +94,11 @@ impl Git {
                 break;
             }
 
-            let Some(commit) = self.find_commit(oid) else {
-                continue;
-            };
+            // The commit has to be found, because it's listed from the revwalk
+            let commit = self
+                .find_commit(oid)
+                .ok_or(anyhow::Error::msg("commit not found: not possible"))?;
+
             commits.push(commit);
         }
         commits.reverse();

@@ -1,7 +1,7 @@
 use super::config::GitConfig;
 use anyhow::{Context, Result};
 use auth_git2::GitAuthenticator;
-use git2::{Branch, BranchType, Error, Oid, Repository, Signature};
+use git2::{Branch, BranchType, Error, ErrorCode, Oid, Repository, Signature};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     path::PathBuf,
@@ -242,10 +242,18 @@ impl Git {
     }
 
     /// Delete a note
+    ///
+    /// Does not return any error when you delete nothing
     pub fn delete_note(&self, oid: &Oid) -> Result<()> {
-        self.repository
-            .note_delete(*oid, None, &self.signature, &self.signature)
-            .context("Cannot delete note")
+        let result = self
+            .repository
+            .note_delete(*oid, None, &self.signature, &self.signature);
+        if let Err(ref err) = result {
+            if err.code() == ErrorCode::NotFound {
+                return Ok(());
+            }
+        }
+        result.context("cannot delete note")
     }
 
     /// Set the note of a given oid

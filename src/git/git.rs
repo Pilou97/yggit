@@ -271,6 +271,31 @@ impl Git {
             .context("cannot write note")
     }
 
+    /// Returns the note of a given oid
+    fn find_note<N>(&self, oid: Oid) -> Option<N>
+    where
+        N: DeserializeOwned,
+    {
+        self.repository
+            .find_note(None, oid)
+            .map(|note| note.message().map(|str| str.to_string()))
+            .ok()
+            .flatten()
+            .and_then(|string| {
+                // Removes empty lines
+                // Takes the last line
+                // So that it's compatible with merging fixup commits
+                // When two commits are merged, the note are also merged
+                // The note of the most recent commit is taking into account then
+                string
+                    .split('\n')
+                    .filter(|str| !str.trim().is_empty())
+                    .last()
+                    .map(ToString::to_string)
+            })
+            .and_then(|str| serde_json::from_str(&str).ok())
+    }
+
     /// Retrieve a commit with its node
     pub fn find_commit<N>(&self, oid: Oid) -> Option<EnhancedCommit<N>>
     where
@@ -279,21 +304,7 @@ impl Git {
         // Get the commit
         let commit = self.repository.find_commit(oid).ok()?;
         // Get the associated note
-        let note: Option<N> = self
-            .repository
-            .find_note(None, oid)
-            .map(|note| note.message().map(|str| str.to_string()))
-            .ok()
-            .flatten()
-            .and_then(|string| {
-                // Take the last line
-                // So that it's compatible with merging fixup commits
-                // When two commits are merged, the note are also merged
-                // The note of the most recent commit is taking into account then
-                string.split('\n').last().map(ToString::to_string)
-            })
-            .and_then(|str| serde_json::from_str(&str).ok());
-
+        let note: Option<N> = self.find_note(oid);
         // Get the title and the description
         let mut message = commit.message().unwrap_or_default().splitn(2, '\n');
         // Title is on the first line of the message

@@ -12,7 +12,6 @@ pub struct Git {
     auth: GitAuthenticator,
 }
 
-#[derive(Clone)]
 pub struct EnhancedCommit<N> {
     pub id: Oid,
     pub title: String,

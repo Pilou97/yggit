@@ -3,7 +3,12 @@ use anyhow::{Context, Result};
 use auth_git2::GitAuthenticator;
 use git2::{Branch, BranchType, Error, Oid, Repository, Signature};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{path::PathBuf, process::Command, str::FromStr};
+use std::{
+    path::PathBuf,
+    process::Command,
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
 pub struct Git {
     repository: Repository,
@@ -117,57 +122,71 @@ impl Git {
         let mut remote_callbacks = git2::RemoteCallbacks::new();
         remote_callbacks.credentials(self.auth.credentials(&git_config));
 
-        remote_callbacks.push_negotiation(|remote_updates| {
+        enum PushError {
+            NotYetImplemented,
+            NoUpdate,             // Should not happen
+            RemoteOriginDiverged, // Used when using force-with-lease
+        }
+
+        enum PushStatus {
+            Pushed,
+            NewBranchPushed,
+            Error(PushError),
+        }
+
+        let error: Arc<Mutex<Option<PushStatus>>> = Arc::new(Mutex::new(None));
+        let cloned_external_variable = Arc::clone(&error);
+
+        remote_callbacks.push_negotiation(move |remote_updates| {
+            let mut status = cloned_external_variable.lock().unwrap();
             let null = git2::Oid::zero();
-            if let Some(remote_update) = remote_updates.iter().next() {
-                // It's a new branch
-                if remote_update.src() == null {
-                    println!("{}:{} is a new branch", origin, branch);
-                    return Ok(());
-                }
-                // No need to push
-                if remote_update.src() == remote_update.dst() {
-                    println!("{}:{} is up to date", origin, branch);
-                    return Err(git2::Error::from_str("no need to push"));
-                }
-                return match mode {
-                    PushMode::Normal => {
-                        // last commit of remote has to be known in current branch
-                        Err(Error::from_str("not yet implemented"))
-                    }
-                    PushMode::Force => Ok(()),
-                    PushMode::ForceWithLease => {
-                        // Comparing src with local origin
-                        let remote_origin_oid = remote_update.src();
-                        // Get the head of this branch
-                        let local_origin_oid = {
-                            let local_origin_name = remote_update
-                                .src_refname()
-                                .ok_or(Error::from_str("cannot parse source refname"))?;
-                            let upstream_name = local_origin_name
-                                .strip_prefix("refs/heads/")
-                                .ok_or(Error::from_str("cannot strip local origin name"))?;
-                            self.repository
-                                .find_reference(&format!(
-                                    "refs/remotes/{}/{}",
-                                    origin, upstream_name
-                                ))
-                                .ok()
-                                .and_then(|reference| reference.peel_to_commit().ok())
-                                .map(|commit| commit.id())
-                                .ok_or(Error::from_str("cannot find the commit reference hash"))?
-                        };
-                        if remote_origin_oid == local_origin_oid {
-                            Ok(())
-                        } else {
-                            println!("{}:{} has diverged, not pushing", origin, branch);
-                            Err(Error::from_str("Origins have divered"))
-                        }
-                    }
-                };
+            let Some(remote_update) = remote_updates.iter().next() else {
+                *status = Some(PushStatus::Error(PushError::NoUpdate));
+                return Err(Error::from_str("not updates to be done"));
+            };
+
+            if remote_update.src() == null {
+                *status = Some(PushStatus::NewBranchPushed);
+                return Ok(());
             }
-            println!("There were no negotiation");
-            Err(git2::Error::from_str("No negotiation"))
+
+            match mode {
+                PushMode::Normal => {
+                    // last commit of remote has to be known in current branch
+                    *status = Some(PushStatus::Error(PushError::NotYetImplemented));
+                    Err(Error::from_str("not yet implemented"))
+                }
+                PushMode::Force => {
+                    *status = Some(PushStatus::Pushed);
+                    Ok(())
+                }
+                PushMode::ForceWithLease => {
+                    // Comparing src with local origin
+                    let remote_origin_oid = remote_update.src();
+                    // Get the head of this branch
+                    let local_origin_oid = {
+                        let local_origin_name = remote_update
+                            .src_refname()
+                            .ok_or(Error::from_str("cannot parse source refname"))?;
+                        let upstream_name = local_origin_name
+                            .strip_prefix("refs/heads/")
+                            .ok_or(Error::from_str("cannot strip local origin name"))?;
+                        self.repository
+                            .find_reference(&format!("refs/remotes/{}/{}", origin, upstream_name))
+                            .ok()
+                            .and_then(|reference| reference.peel_to_commit().ok())
+                            .map(|commit| commit.id())
+                            .ok_or(Error::from_str("cannot find the commit reference hash"))?
+                    };
+                    if remote_origin_oid == local_origin_oid {
+                        *status = Some(PushStatus::Pushed);
+                        Ok(())
+                    } else {
+                        *status = Some(PushStatus::Error(PushError::RemoteOriginDiverged));
+                        Err(Error::from_str("Origins have divered"))
+                    }
+                }
+            }
         });
 
         push_options.remote_callbacks(remote_callbacks);
@@ -176,15 +195,40 @@ impl Git {
             .repository
             .find_remote(origin)
             .context("Cannot find origin")?;
-        let result = remote.push(
+        let _ = remote.push(
             &[format!("+{}", fetch_refname).as_str()],
             Some(&mut push_options),
         );
-        if result.is_ok() {
-            println!("{}:{} pushed", origin, branch);
+
+        let status = error.lock().unwrap();
+        let status = status.as_ref();
+        match status {
+            Some(PushStatus::Error(PushError::NoUpdate)) => {
+                println!("no update to be done");
+                Err(anyhow::Error::msg("not pushed"))
+            }
+            Some(PushStatus::Error(PushError::NotYetImplemented)) => {
+                println!("not yet implemented");
+                Err(anyhow::Error::msg("not yet implemented"))
+            }
+            Some(PushStatus::Error(PushError::RemoteOriginDiverged)) => {
+                println!("remote {origin}:{branch} has diverged");
+                Err(anyhow::Error::msg("remote has diverged"))
+            }
+            Some(PushStatus::Pushed) => {
+                println!("{origin}:{branch} pushed");
+                Ok(())
+            }
+            Some(PushStatus::NewBranchPushed) => {
+                println!("{origin}:{branch} pushed, new branch created");
+                Ok(())
+            }
+            None => {
+                // TODO: this case should be removed
+                println!("this case should not happen");
+                Ok(())
+            }
         }
-        // TODO: return error when one origin push failed
-        Ok(())
     }
 
     /// Equivalent of `git push --force-with-lease`

@@ -25,15 +25,6 @@ pub struct Yggit {
 }
 
 impl GitConfig {
-    /// Try to load gitconfig from:
-    ///  - global: $HOME/.gitconfig
-    ///  - XDG: $HOME/.config/git/config
-    ///  - system: /etc/gitconfig
-    pub fn open_default() -> Result<GitConfig> {
-        let config = git2::Config::open_default().context("Cannot open git config")?;
-        Self::open_with_git_config(config)
-    }
-
     /// Parse the git config and return a Config
     ///
     /// It parses the following field:
@@ -41,7 +32,7 @@ impl GitConfig {
     ///  - user.name : required
     ///  - notes.rewriteRef = "refs/notes/commits" : required
     ///  - yggit.defaultUpstream : optional, default(origin)
-    fn open_with_git_config(config: git2::Config) -> Result<GitConfig> {
+    pub fn parse(config: git2::Config) -> Result<GitConfig> {
         let email = config
             .get_string("user.email")
             .context("email not found in configuration")?;
@@ -88,7 +79,7 @@ mod tests {
     impl GitConfig {
         fn open(path: &Path) -> Result<GitConfig> {
             let config = git2::Config::open(path).context("config not found")?;
-            Self::open_with_git_config(config)
+            Self::parse(config)
         }
     }
 

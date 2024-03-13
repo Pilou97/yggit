@@ -43,7 +43,8 @@ impl Git {
             current_dir.join(path)
         };
         let repository = Repository::discover(path).context("repository not found")?;
-        let gitconfig = GitConfig::open_default()?;
+        let config = repository.config().context("config not found")?;
+        let gitconfig = GitConfig::parse(config)?;
         let signature = Signature::now(&gitconfig.user.name, &gitconfig.user.email)
             .context("cannot compute signature")?;
         Ok(Git {

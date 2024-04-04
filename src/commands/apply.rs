@@ -26,13 +26,9 @@ impl Apply {
     pub fn execute(&self, git: Git) -> Result<()> {
         let commits = git.list_commits()?;
         let output = commits_to_string(commits);
-
-        let file_path = "/tmp/yggit";
-
         let output = format!("{}\n{}", output, COMMENTS);
-        std::fs::write(file_path, output).context("Cannot write yggit file to filesystem")?;
 
-        let content = git.edit_file(file_path)?;
+        let content = git.edit_text(output)?;
 
         let commits = instruction_from_string(content).context("Cannot parse instructions")?;
 

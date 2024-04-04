@@ -336,7 +336,11 @@ impl Git {
     }
 
     /// Open the given file with the user's editor and returns the content of this file
-    pub fn edit_file(&self, file_path: &str) -> Result<String> {
+    pub fn edit_text(&self, content: String) -> Result<String> {
+        let file_path = "/tmp/yggit";
+        // Write the content to the file
+        std::fs::write(file_path, content).context("cannot write file to disk")?;
+        // Open the editor
         let output = Command::new(&self.config.core.editor)
             .arg(file_path)
             .status()
@@ -344,6 +348,7 @@ impl Git {
         let true = output.success() else {
             return Err(anyhow::Error::msg("Editor did not end successfully"));
         };
+        // Read the content of the file
         let content =
             std::fs::read_to_string(file_path).context("Cannot read string from editor")?;
         Ok(content)

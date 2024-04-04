@@ -1,20 +1,23 @@
-use super::config::GitConfig;
+use super::{config::GitConfig, ui::Editor};
 use anyhow::{Context, Result};
 use auth_git2::GitAuthenticator;
 use git2::{Branch, BranchType, Error, ErrorCode, Oid, Repository, Signature};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     path::PathBuf,
-    process::Command,
     str::FromStr,
     sync::{Arc, Mutex},
 };
 
-pub struct Git {
+pub struct Git<Ui>
+where
+    Ui: Editor,
+{
     repository: Repository,
     signature: Signature<'static>,
     pub config: GitConfig,
     auth: GitAuthenticator,
+    editor: Ui,
 }
 
 pub struct EnhancedCommit<N> {
@@ -31,7 +34,10 @@ enum PushMode {
     ForceWithLease,
 }
 
-impl Git {
+impl<Ui> Git<Ui>
+where
+    Ui: Editor,
+{
     /// Open a repository at the given path
     /// Also load the signature from the .gitconfig
     pub fn open(path: &str) -> Result<Self> {
@@ -45,6 +51,8 @@ impl Git {
         let repository = Repository::discover(path).context("repository not found")?;
         let config = repository.config().context("config not found")?;
         let gitconfig = GitConfig::parse(config)?;
+        let editor = Ui::new(&gitconfig)?;
+
         let signature = Signature::now(&gitconfig.user.name, &gitconfig.user.email)
             .context("cannot compute signature")?;
         Ok(Git {
@@ -52,6 +60,7 @@ impl Git {
             signature,
             config: gitconfig,
             auth: GitAuthenticator::new(),
+            editor,
         })
     }
 
@@ -335,23 +344,9 @@ impl Git {
         Ok(())
     }
 
-    /// Open the given file with the user's editor and returns the content of this file
+    /// Edit the given text
     pub fn edit_text(&self, content: String) -> Result<String> {
-        let file_path = "/tmp/yggit";
-        // Write the content to the file
-        std::fs::write(file_path, content).context("cannot write file to disk")?;
-        // Open the editor
-        let output = Command::new(&self.config.core.editor)
-            .arg(file_path)
-            .status()
-            .context("Failed to open editor")?;
-        let true = output.success() else {
-            return Err(anyhow::Error::msg("Editor did not end successfully"));
-        };
-        // Read the content of the file
-        let content =
-            std::fs::read_to_string(file_path).context("Cannot read string from editor")?;
-        Ok(content)
+        self.editor.edit(content)
     }
 }
 
@@ -365,7 +360,10 @@ mod tests {
     };
     use tempfile::TempDir;
 
-    use crate::git::config::{Core, GitConfig, User, Yggit};
+    use crate::git::{
+        config::{Core, GitConfig, User, Yggit},
+        ui::Terminal,
+    };
 
     use super::Git;
 
@@ -559,19 +557,19 @@ mod tests {
     #[test]
     fn test_open_repository() {
         let repo = GitTmp::init_bare("main");
-        let _ = Git::open(&repo.path()).expect("repo should exist");
+        let _ = Git::<Terminal>::open(&repo.path()).expect("repo should exist");
     }
 
     #[test]
     fn test_open_repository_not_found() {
         let tmp = TempDir::new().expect("the folder should be created");
-        let result = Git::open(tmp.path().to_str().unwrap());
+        let result = Git::<Terminal>::open(tmp.path().to_str().unwrap());
         assert!(result.is_err())
     }
 
     #[test]
     fn test_open_relative_repository() {
-        let _ = Git::open(".");
+        let _ = Git::<Terminal>::open(".");
     }
 
     /// helper that initialize a repository with one commit
@@ -592,7 +590,8 @@ mod tests {
     #[test]
     fn test_find_commit() {
         let (head, repo) = init_repo_with_commit();
-        let git = Git::open(&repo.path()).expect("should be able to open the repository");
+        let git =
+            Git::<Terminal>::open(&repo.path()).expect("should be able to open the repository");
         let commit = git
             .find_commit::<String>(head)
             .expect("commit should be present");
@@ -602,7 +601,8 @@ mod tests {
     #[test]
     fn test_commit_not_found() {
         let (_, repo) = init_repo_with_commit();
-        let git = Git::open(&repo.path()).expect("should be able to open the repository");
+        let git =
+            Git::<Terminal>::open(&repo.path()).expect("should be able to open the repository");
         let commit = git.find_commit::<String>(Oid::zero());
         assert!(commit.is_none())
     }
@@ -610,7 +610,8 @@ mod tests {
     #[test]
     fn test_get_note() {
         let (head, repo) = init_repo_with_commit();
-        let git = Git::open(&repo.path()).expect("should be able to open the repository");
+        let git =
+            Git::<Terminal>::open(&repo.path()).expect("should be able to open the repository");
         let note = git
             .find_note::<String>(head)
             .expect("the note has to be present");
@@ -620,7 +621,8 @@ mod tests {
     #[test]
     fn test_get_no_note() {
         let (_, repo) = init_repo_with_commit();
-        let git = Git::open(&repo.path()).expect("should be able to open the repository");
+        let git =
+            Git::<Terminal>::open(&repo.path()).expect("should be able to open the repository");
         let note = git.find_note::<String>(Oid::zero());
         assert!(note.is_none());
     }
@@ -628,7 +630,8 @@ mod tests {
     #[test]
     fn test_delete_note() {
         let (head, repo) = init_repo_with_commit();
-        let git = Git::open(&repo.path()).expect("should be able to open the repository");
+        let git =
+            Git::<Terminal>::open(&repo.path()).expect("should be able to open the repository");
         let note = git
             .find_note::<String>(head)
             .expect("the note has to be present");
@@ -641,7 +644,8 @@ mod tests {
     #[test]
     fn test_set_note() {
         let (head, repo) = init_repo_with_commit();
-        let git = Git::open(&repo.path()).expect("should be able to open the repository");
+        let git =
+            Git::<Terminal>::open(&repo.path()).expect("should be able to open the repository");
         git.set_note(head, "a note").expect("not should be written");
         let note = git
             .find_note::<String>(head)
@@ -653,7 +657,8 @@ mod tests {
     fn test_overwrite_note() {
         let (head, repo) = init_repo_with_commit();
 
-        let git = Git::open(&repo.path()).expect("should be able to open the repository");
+        let git =
+            Git::<Terminal>::open(&repo.path()).expect("should be able to open the repository");
         git.set_note(head, "a note").expect("not should be written");
         git.set_note(head, "a note 2")
             .expect("not should be written");
@@ -669,7 +674,8 @@ mod tests {
     fn test_delete_note_two_times() {
         let (head, repo) = init_repo_with_commit();
 
-        let git = Git::open(&repo.path()).expect("should be able to open the repository");
+        let git =
+            Git::<Terminal>::open(&repo.path()).expect("should be able to open the repository");
 
         git.delete_note(&head).expect("should work");
         git.delete_note(&head).expect("should work");
@@ -698,7 +704,7 @@ mod tests {
         repo.commit("pride and prejudice");
 
         // Let's open git in clone
-        let git = Git::open(&clone.path()).expect("git should be open");
+        let git = Git::<Terminal>::open(&clone.path()).expect("git should be open");
         // let's add a file and commit it
         clone.new_file("yolo.md", "some content");
         clone.add_all();
@@ -737,7 +743,7 @@ mod tests {
         repo.push();
 
         // Let's open git in clone
-        let git = Git::open(&clone.path()).expect("git should be open");
+        let git = Git::<Terminal>::open(&clone.path()).expect("git should be open");
         // let's add a file and commit it
         clone.pull();
         clone.amend("hello again"); // The history has been modified
@@ -772,7 +778,7 @@ mod tests {
         repo.commit("pride and prejudice");
 
         // Let's open git in clone
-        let git = Git::open(&clone.path()).expect("git should be open");
+        let git = Git::<Terminal>::open(&clone.path()).expect("git should be open");
         // let's add a file and commit it
         clone.new_file("yolo.md", "some content");
         clone.add_all();
@@ -806,7 +812,7 @@ mod tests {
     #[test]
     fn test_find_main_branch_main() {
         let repo = init_main_branch_test("main");
-        let git = Git::open(&repo.path()).unwrap();
+        let git = Git::<Terminal>::open(&repo.path()).unwrap();
         let branch = git.main_branch().unwrap();
         let branch = branch.name().unwrap().unwrap();
         assert_eq!(branch, "main");
@@ -815,7 +821,7 @@ mod tests {
     #[test]
     fn test_find_main_branch_master() {
         let repo = init_main_branch_test("master");
-        let git = Git::open(&repo.path()).unwrap();
+        let git = Git::<Terminal>::open(&repo.path()).unwrap();
         let branch = git.main_branch().unwrap();
         let branch = branch.name().unwrap().unwrap();
         assert_eq!(branch, "master");
@@ -824,7 +830,7 @@ mod tests {
     #[test]
     fn test_find_unknown_branch() {
         let repo = init_main_branch_test("unknown");
-        let git = Git::open(&repo.path()).unwrap();
+        let git = Git::<Terminal>::open(&repo.path()).unwrap();
         let branch = git.main_branch();
         assert!(branch.is_none())
     }
@@ -832,7 +838,7 @@ mod tests {
     #[test]
     fn test_list_commits_from_main() {
         let (_, repo) = init_repo_with_commit();
-        let git = Git::open(&repo.path()).unwrap();
+        let git = Git::<Terminal>::open(&repo.path()).unwrap();
         let commits = git.list_commits::<String>().unwrap();
         assert_eq!(commits.len(), 0) // because we are on main
     }
@@ -845,7 +851,7 @@ mod tests {
         repo.add_all();
         let oid = repo.commit("first commit on my branch");
 
-        let git = Git::open(&repo.path()).unwrap();
+        let git = Git::<Terminal>::open(&repo.path()).unwrap();
         let commits = git.list_commits::<String>().unwrap();
         assert_eq!(commits.len(), 1);
         let commit = commits.iter().next().unwrap();

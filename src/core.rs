@@ -1,5 +1,5 @@
 use crate::{
-    git::{EnhancedCommit, Git},
+    git::{Editor, EnhancedCommit, Git},
     parser::Target,
 };
 use anyhow::{Context, Result};
@@ -19,7 +19,7 @@ pub struct Note {
 /// Save the note to the commit
 ///
 /// Also deletes note if there is nothing new
-pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) -> Result<()> {
+pub fn save_note(git: &Git<impl Editor>, commits: Vec<crate::parser::Commit>) -> Result<()> {
     for commit in commits {
         // Extract information from commit
         let crate::parser::Commit { hash, target, .. } = commit;
@@ -44,7 +44,7 @@ pub fn save_note(git: &Git, commits: Vec<crate::parser::Commit>) -> Result<()> {
 
 /// Execute the instructions from the notes
 /// to change the head of the given branches
-pub fn apply(git: &Git) -> Result<()> {
+pub fn apply(git: &Git<impl Editor>) -> Result<()> {
     let commits = git.list_commits()?;
 
     // Update the commits
@@ -71,7 +71,7 @@ pub fn apply(git: &Git) -> Result<()> {
 ///
 /// If force is set to true it will use --force
 /// Otherwise it uses --force-with-lease
-pub fn push_from_notes(git: &Git, force: bool) -> Result<()> {
+pub fn push_from_notes(git: &Git<impl Editor>, force: bool) -> Result<()> {
     let commits = git.list_commits()?;
     // Push everything
     for commit in &commits {

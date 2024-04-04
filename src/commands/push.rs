@@ -1,6 +1,6 @@
 use crate::{
     core::{apply, push_from_notes, save_note},
-    git::Git,
+    git::{Editor, Git},
     parser::{commits_to_string, instruction_from_string},
 };
 use anyhow::{Context, Result};
@@ -28,7 +28,7 @@ const COMMENTS: &str = r#"
 "#;
 
 impl Push {
-    pub fn execute(&self, git: Git) -> Result<()> {
+    pub fn execute(&self, git: Git<impl Editor>) -> Result<()> {
         let commits = git.list_commits()?;
         let output = commits_to_string(commits);
         let output = format!("{}\n{}", output, COMMENTS);

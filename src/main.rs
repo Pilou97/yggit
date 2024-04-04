@@ -4,6 +4,7 @@ use commands::apply::Apply;
 use commands::push::Push;
 use commands::show::Show;
 use git::Git;
+use git::Terminal;
 
 mod commands;
 mod core;
@@ -28,7 +29,7 @@ enum Commands {
 fn main() {
     let args = Cli::parse();
 
-    let git = Git::open(".").unwrap();
+    let git = Git::<Terminal>::open(".").unwrap();
 
     match args.command {
         Commands::Push(push) => push.execute(git),

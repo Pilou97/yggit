@@ -10,6 +10,7 @@ mod commands;
 mod core;
 mod git;
 mod parser;
+mod tests;
 
 #[derive(Debug, Parser)] // requires `derive` feature
 #[command(name = "yggit")]

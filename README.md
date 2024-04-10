@@ -26,6 +26,28 @@ I can also specify a custom upstream:
 -> origin:mybranch-name
 ```
 
+# Contributing
+
+Any contribution are welcomed!
+
+## About coverage:
+
+The coverage is computed with [cargo-llvm-cov](https://crates.io/crates/cargo-llvm-cov)
+
+To dev with coverage:
+
+```bash
+$ cargo watch -x "llvm-cov --lcov --output-path lcov.info"
+```
+
+> With vscode you can use the extension "Coverage Gutters"
+
+To generate a beautiful html:
+
+```
+$ cargo llvm-cov --html
+```
+
 # Warning
 
 This project is poorly tested, use it at your own risk.

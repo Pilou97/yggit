@@ -1,0 +1,9 @@
+[package]
+name = "yggit"
+version = "1.0.0"
+edition = "2021"
+description = "small tool to manage my one branch git workflow"
+license = "MIT AND Apache-2.0"
+documentation = "https://github.com/Pilou97/yggit"
+homepage = "https://github.com/Pilou97/yggit"
+repository = "https://github.com/Pilou97/yggit"

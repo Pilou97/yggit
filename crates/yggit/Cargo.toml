@@ -7,3 +7,6 @@ license = "MIT AND Apache-2.0"
 documentation = "https://github.com/Pilou97/yggit"
 homepage = "https://github.com/Pilou97/yggit"
 repository = "https://github.com/Pilou97/yggit"
+
+[dependencies]
+yggit-db = { path = "../yggit-db" }

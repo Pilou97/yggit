@@ -1,0 +1,9 @@
+[package]
+name = "yggit-parser"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pest = { version = "2.8.0" }
+pest_derive = "2.8.0"
+thiserror = { workspace = true }

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/yggit", "crates/yggit-db"]
+members = ["crates/yggit", "crates/yggit-db", "crates/yggit-parser"]
 
 [workspace.dependencies]
 git2 = "0.20.2"

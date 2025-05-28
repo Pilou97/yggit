@@ -69,7 +69,7 @@ impl<'a> Database<'a> {
     where
         D: Serialize,
     {
-        let mut note = self.read_note(oid)?;
+        let mut note = self.read_note(oid);
 
         let data = serde_json::to_value(data).map_err(|_| DatabaseError::CannotSerializeValue)?;
         note.insert(key.to_string(), data);
@@ -82,7 +82,7 @@ impl<'a> Database<'a> {
     where
         D: DeserializeOwned,
     {
-        let note = self.read_note(oid)?;
+        let note = self.read_note(oid);
 
         let Some(value) = note.get(key) else {
             return Ok(None);

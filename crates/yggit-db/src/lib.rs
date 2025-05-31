@@ -91,6 +91,13 @@ impl<'a> Database<'a> {
             .map(Some)
             .map_err(|_| DatabaseError::CannotDeserializeValue)
     }
+
+    /// Delete the key for a given note
+    pub fn delete(&self, oid: &Oid, key: &str) -> Result<(), DatabaseError> {
+        let mut note = self.read_note(oid);
+        note.remove(key);
+        self.write_note(oid, note)
+    }
 }
 
 #[cfg(test)]
@@ -137,5 +144,7 @@ mod tests {
             "data",
             database.read::<String>(&id, "hello").unwrap().unwrap()
         );
+        database.delete(&id, &"hello").expect("should work");
+        assert!(database.read::<String>(&id, "hello").unwrap().is_none());
     }
 }

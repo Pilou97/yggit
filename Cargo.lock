@@ -751,6 +751,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "yggit-git"
+version = "0.1.0"
+dependencies = [
+ "git2",
+ "thiserror",
+]
+
+[[package]]
 name = "yggit-parser"
 version = "0.1.0"
 dependencies = [

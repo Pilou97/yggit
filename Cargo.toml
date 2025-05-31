@@ -1,8 +1,14 @@
 [workspace]
-members = ["crates/yggit", "crates/yggit-db", "crates/yggit-git", "crates/yggit-parser"]
+members = [
+    "crates/yggit",
+    "crates/yggit-db",
+    "crates/yggit-git",
+    "crates/yggit-parser",
+]
 
 [workspace.dependencies]
 git2 = "0.20.2"
 thiserror = "2.0.12"
 serde = "1.0.219"
 serde_json = "1.0.140"
+auth-git2 = "0.5.8"

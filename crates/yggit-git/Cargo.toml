@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 git2 = { workspace = true }
 thiserror = { workspace = true }
+auth-git2 = { workspace = true }

@@ -4,13 +4,15 @@ A tool to manage my git workflow.
 
 It allows me to have one branch, and to associate a commits to a specific branch with a interface like the rebase one
 
-# How I am using it?
+# How I am using it? What is my git workflow ?
 
-First I use git to have a beautiful history. To do so I am using `git-rebase`.
+First I am using `git` to have a beautiful history. To do so I am using `git-rebase`. My goal is to have a linear history and only incremental commits. IMO it's easier to review, and easier to manage when coding. By doing this exercice I've found out I am thinking a bit more before implemententing a solution
 
-Then when I am ready to push my commits in different branch I just have to use `yggit push`.
+Then I will want to split my history in many branches, because a bug fix or a feature can be done in many steps, so in many branches.
 
-A _rebase like_ interface will open with the editor specified in your git configuration.
+To do so I just have to run `yggit push`
+
+A _rebase like_ interface will open with the editor specified in your `git` configuration.
 
 > Do not edit/move your commit in this editor, it won't have any effects.
 
@@ -28,7 +30,7 @@ I can also specify a custom upstream:
 
 # Warning
 
-This project is poorly tested, use it at your own risk.
+Even if I use this project daily in my work day. It is poorly tested, use it at your own risk.
 
 # Acknowledgements
 

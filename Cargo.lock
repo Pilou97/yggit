@@ -848,6 +848,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "yggit-core"
+version = "0.1.0"
+dependencies = [
+ "git2",
+ "serde",
+ "yggit-db",
+ "yggit-git",
+ "yggit-parser",
+ "yggit-ui",
+]
+
+[[package]]
 name = "yggit-db"
 version = "0.1.0"
 dependencies = [

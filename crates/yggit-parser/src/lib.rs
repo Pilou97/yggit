@@ -2,14 +2,14 @@ use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Commit {
-    sha: String,
-    title: String,
+    pub sha: String,
+    pub title: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Branch {
-    origin: Option<String>,
-    name: String,
+    pub origin: Option<String>,
+    pub name: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]

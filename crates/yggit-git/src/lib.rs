@@ -55,6 +55,8 @@ pub enum GitError {
     },
     #[error("Feature {0} is not yet implemented")]
     NotYetImplemented(&'static str),
+    #[error("Commit {0} was not found")]
+    CommitNotFound(Oid),
 }
 
 impl<'a> Git<'a> {
@@ -253,6 +255,20 @@ impl<'a> Git<'a> {
     /// Equivalent of `git push`
     pub fn push(&self, origin: &str, branch: &str) -> Result<(), GitError> {
         self.custom_push(origin, branch, PushMode::Normal)
+    }
+
+    /// Set a branch to a given commit
+    pub fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), GitError> {
+        let commit = self
+            .repository
+            .find_commit(oid)
+            .map_err(|_| GitError::CommitNotFound(oid))?;
+
+        self.repository
+            .branch(branch, &commit, true)
+            .map_err(|_| GitError::BranchNotFound(branch.to_string()))?;
+
+        Ok(())
     }
 }
 

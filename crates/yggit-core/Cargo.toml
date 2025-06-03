@@ -1,0 +1,12 @@
+[package]
+name = "yggit-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+git2 = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+yggit-db = { path = "../yggit-db" }
+yggit-ui = { path = "../yggit-ui" }
+yggit-parser = { path = "../yggit-parser" }
+yggit-git = { path = "../yggit-git" }

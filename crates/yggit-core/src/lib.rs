@@ -25,9 +25,15 @@ pub fn push<'a>(
     db: impl Database,
     editor: impl Editor,
     force: bool,
+    onto: Option<String>,
 ) -> Result<(), CoreError> {
+    let onto = match onto {
+        Some(onto) => onto,
+        None => git.main().map_err(CoreError::GitError)?,
+    };
+
     // only compatible with main (for now)
-    let commits = git.list_commits("main").map_err(CoreError::GitError)?;
+    let commits = git.list_commits(&onto).map_err(CoreError::GitError)?;
 
     // Now let's retrieve the branch for the existing commits
     let branches = commits

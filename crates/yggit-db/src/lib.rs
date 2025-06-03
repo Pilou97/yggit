@@ -8,7 +8,7 @@ use thiserror::Error;
 ///
 /// The values are stored in the commit note
 /// Don't forget to set rewriteRef to "refs/notes/commits"
-pub struct Database<'a> {
+pub struct GitDatabase<'a> {
     repository: &'a Repository,
     name: String,
     email: String,
@@ -30,13 +30,28 @@ pub enum DatabaseError {
     CannotClose,
 }
 
-impl<'a> Database<'a> {
+pub trait Database {
+    /// Stores data in the commit note
+    fn write<D>(&self, oid: &Oid, key: &str, data: &D) -> Result<(), DatabaseError>
+    where
+        D: Serialize;
+
+    /// Retrieve data from the commit note
+    fn read<D>(&self, oid: &Oid, key: &str) -> Result<Option<D>, DatabaseError>
+    where
+        D: DeserializeOwned;
+
+    /// Delete the key for a given note
+    fn delete(&self, oid: &Oid, key: &str) -> Result<(), DatabaseError>;
+}
+
+impl<'a> GitDatabase<'a> {
     pub fn new(
         repository: &'a Repository,
         name: String,
         email: String,
     ) -> Result<Self, DatabaseError> {
-        Ok(Database {
+        Ok(GitDatabase {
             repository,
             name,
             email,
@@ -63,9 +78,10 @@ impl<'a> Database<'a> {
             .map(|_| ())
             .map_err(|_| DatabaseError::CannotClose)
     }
+}
 
-    /// Stores data in the commit note
-    pub fn write<D>(&self, oid: &Oid, key: &str, data: &D) -> Result<(), DatabaseError>
+impl<'a> Database for GitDatabase<'a> {
+    fn write<D>(&self, oid: &Oid, key: &str, data: &D) -> Result<(), DatabaseError>
     where
         D: Serialize,
     {
@@ -77,8 +93,7 @@ impl<'a> Database<'a> {
         self.write_note(oid, note)
     }
 
-    /// Retrieve data from the commit note
-    pub fn read<D>(&self, oid: &Oid, key: &str) -> Result<Option<D>, DatabaseError>
+    fn read<D>(&self, oid: &Oid, key: &str) -> Result<Option<D>, DatabaseError>
     where
         D: DeserializeOwned,
     {
@@ -92,8 +107,7 @@ impl<'a> Database<'a> {
             .map_err(|_| DatabaseError::CannotDeserializeValue)
     }
 
-    /// Delete the key for a given note
-    pub fn delete(&self, oid: &Oid, key: &str) -> Result<(), DatabaseError> {
+    fn delete(&self, oid: &Oid, key: &str) -> Result<(), DatabaseError> {
         let mut note = self.read_note(oid);
         note.remove(key);
         self.write_note(oid, note)
@@ -102,7 +116,7 @@ impl<'a> Database<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::Database;
+    use crate::{Database, GitDatabase};
     use git2::{Repository, Signature};
     use std::io::Write;
     use std::{fs::File, path::Path};
@@ -136,7 +150,7 @@ mod tests {
         let id = repo.head().unwrap().peel_to_commit().unwrap().id();
 
         // Then we can do our stuff
-        let database = Database::new(&repo, "My name".into(), "My email".into()).unwrap();
+        let database = GitDatabase::new(&repo, "My name".into(), "My email".into()).unwrap();
 
         assert!(database.read::<String>(&id, "hello").unwrap().is_none());
         assert!(database.write(&id, "hello", &"data".to_string()).is_ok());

@@ -22,7 +22,7 @@ struct Branch {
 
 pub fn push<'a>(
     git: Git<'a>,
-    db: Database<'a>,
+    db: impl Database,
     editor: impl Editor,
     force: bool,
 ) -> Result<(), CoreError> {

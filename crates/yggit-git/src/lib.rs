@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    hash::Hash,
     sync::{Arc, Mutex},
 };
 
@@ -26,6 +27,26 @@ pub enum NegotiationResult {
     AllowedToPush,
     AllowedToPushNewBranch,
 }
+
+#[derive(Clone)]
+pub struct Commit {
+    pub oid: Oid,
+    pub title: String,
+}
+
+impl Hash for Commit {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.oid.hash(state);
+    }
+}
+
+impl PartialEq for Commit {
+    fn eq(&self, other: &Self) -> bool {
+        self.oid == other.oid
+    }
+}
+
+impl Eq for Commit {}
 
 #[derive(Debug, Error)]
 pub enum GitError {
@@ -79,7 +100,7 @@ impl<'a> Git<'a> {
         return Err(GitError::NoMainBranch);
     }
 
-    pub fn list_commits(&self, until: &str) -> Result<Vec<Oid>, GitError> {
+    pub fn list_commits(&self, until: &str) -> Result<Vec<Commit>, GitError> {
         let head = self
             .repository
             .head()
@@ -123,8 +144,18 @@ impl<'a> Git<'a> {
                 break;
             }
 
+            // Get the commit
+            let commit = self
+                .repository
+                .find_commit(oid)
+                .map_err(|_| GitError::CommitNotFound(oid))?;
+            // Get the title and the description
+            let mut message = commit.message().unwrap_or_default().splitn(2, '\n');
+            // Title is on the first line of the message
+            let title = message.next().unwrap_or_default().to_string();
+
             // The commit has to be found, because it's listed from the revwalk
-            commits.push(oid);
+            commits.push(Commit { oid, title });
         }
 
         Ok(commits)

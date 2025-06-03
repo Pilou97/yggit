@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use yggit_db::{Database, DatabaseError};
 use yggit_git::{Git, GitError};
-use yggit_parser::{Line, Parser, ParserError};
+use yggit_parser::{Commit, Line, Parser, ParserError};
 use yggit_ui::{Editor, EditorError};
 
 pub enum CoreError {
@@ -30,24 +30,34 @@ pub fn push<'a>(
     let commits = git.list_commits("main").map_err(CoreError::GitError)?;
 
     // Now let's retrieve the branch for the existing commits
-    let _branches = commits
+    let branches = commits
         .iter()
-        .filter_map(|oid| match db.read::<Branch>(&oid, "branch") {
-            Ok(Some(branch)) => Some(Ok((oid.clone(), branch))),
+        .filter_map(|commit| match db.read::<Branch>(&commit.oid, "branch") {
+            Ok(Some(branch)) => Some(Ok((commit.clone(), branch))),
             Ok(None) => None,
             Err(err) => Some(Err(err)),
         })
-        .collect::<Result<HashMap<Oid, Branch>, DatabaseError>>()
+        .collect::<Result<HashMap<yggit_git::Commit, Branch>, DatabaseError>>()
         .map_err(CoreError::DatabaseError)?;
 
     // Let's create a string with this, so that the user can edit it
     let todo = commits
         .iter()
-        .flat_map(|_commit| {
-            // TODO:
-            // Modify git::list_commits to return a Commit object with Oid + Name + String
-            // Modify parser to handle the string conversion
-            vec![1]
+        .flat_map(|commit| {
+            let commit_line = Line::Commit(Commit {
+                sha: commit.oid.to_string(),
+                title: commit.title.to_string(),
+            });
+            let branch_line = branches.get(&commit).map(|branch| {
+                Line::Branch(yggit_parser::Branch {
+                    origin: branch.origin.clone(),
+                    name: branch.target.clone(),
+                })
+            });
+            match branch_line {
+                Some(branch_line) => vec![commit_line, branch_line],
+                None => vec![commit_line],
+            }
         })
         .map(|line| line.to_string())
         .collect::<Vec<String>>()
@@ -85,12 +95,12 @@ pub fn push<'a>(
     commits
         .iter()
         .map(|commit| -> Result<(), CoreError> {
-            db.delete(commit, "branch")
+            db.delete(&commit.oid, "branch")
                 .map_err(CoreError::DatabaseError)?;
 
-            match branches.get(commit) {
+            match branches.get(&commit.oid) {
                 Some(branch) => {
-                    db.write(commit, "branch", branch)
+                    db.write(&commit.oid, "branch", branch)
                         .map_err(CoreError::DatabaseError)?;
                     Ok(())
                 }

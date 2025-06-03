@@ -105,6 +105,18 @@ impl Parser {
     }
 }
 
+impl ToString for Line {
+    fn to_string(&self) -> String {
+        match self {
+            Line::Commit(commit) => format!("{} {}", commit.sha, commit.title),
+            Line::Branch(branch) => match &branch.origin {
+                Some(origin) => format!("-> {}:{}", origin, branch.name),
+                None => format!("-> {}", branch.name),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{Branch, Commit, Line, Parser};

@@ -10,3 +10,6 @@ repository = "https://github.com/Pilou97/yggit"
 
 [dependencies]
 yggit-db = { path = "../yggit-db" }
+yggit-git = { path = "../yggit-git" }
+yggit-ui = { path = "../yggit-ui" }
+clap = { workspace = true, features = ["derive"] }

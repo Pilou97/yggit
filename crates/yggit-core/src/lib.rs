@@ -79,19 +79,21 @@ pub fn push<'a>(
     let branches = lines
         .windows(2)
         .filter_map(|tuple| {
-            let fst = tuple.get(0).unwrap();
-            let snd = tuple.get(1).unwrap();
+            let fst = tuple.get(0);
+            let snd = tuple.get(1);
             match (fst, snd) {
-                (Line::Commit(commit), Line::Branch(branch)) => match Oid::from_str(&commit.sha) {
-                    Ok(oid) => Some(Ok((
-                        oid,
-                        Branch {
-                            target: branch.name.clone(),
-                            origin: branch.origin.clone(),
-                        },
-                    ))),
-                    Err(_) => Some(Err(CoreError::OidParsing(commit.sha.clone()))),
-                },
+                (Some(Line::Commit(commit)), Some(Line::Branch(branch))) => {
+                    match Oid::from_str(&commit.sha) {
+                        Ok(oid) => Some(Ok((
+                            oid,
+                            Branch {
+                                target: branch.name.clone(),
+                                origin: branch.origin.clone(),
+                            },
+                        ))),
+                        Err(_) => Some(Err(CoreError::OidParsing(commit.sha.clone()))),
+                    }
+                }
                 _ => None,
             }
         })

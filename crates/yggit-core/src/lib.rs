@@ -32,7 +32,6 @@ pub fn push(
         None => git.main().map_err(CoreError::GitError)?,
     };
 
-    // only compatible with main (for now)
     let commits = git.list_commits(&onto).map_err(CoreError::GitError)?;
 
     // Now let's retrieve the branch for the existing commits
@@ -73,10 +72,10 @@ pub fn push(
     let todo = editor.edit(todo).map_err(CoreError::EditorError)?;
 
     // Now we can parse it
-    let lines = Parser::parse_file(&todo).map_err(CoreError::ParserError)?;
+    let parsed_todo = Parser::parse_file(&todo).map_err(CoreError::ParserError)?;
 
-    // Now we retrieve the branches and the correspoding oid
-    let branches = lines
+    // Now we retrieve the branches and the correspoding oid from the todo
+    let branches = parsed_todo
         .windows(2)
         .filter_map(|tuple| {
             let fst = tuple.get(0);

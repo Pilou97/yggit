@@ -20,8 +20,8 @@ struct Branch {
     origin: Option<String>,
 }
 
-pub fn push<'a>(
-    git: Git<'a>,
+pub fn push(
+    git: impl Git,
     db: impl Database,
     editor: impl Editor,
     force: bool,

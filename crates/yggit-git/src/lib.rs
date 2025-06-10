@@ -8,8 +8,29 @@ use auth_git2::GitAuthenticator;
 use git2::{Error, Oid, Repository};
 use thiserror::Error;
 
-/// A git client
-pub struct Git<'a> {
+pub trait Git {
+    /// Returns the main branch
+    fn main(&self) -> Result<String, GitError>;
+
+    /// List all the commits
+    /// From HEAD to unit parameter
+    fn list_commits(&self, until: &str) -> Result<Vec<Commit>, GitError>;
+
+    /// equivalent of `git push --force-with-lease`
+    fn push_force_with_lease(&self, origin: &str, branch: &str) -> Result<(), GitError>;
+
+    /// Equivalent of `git push --force`
+    fn push_force(&self, origin: &str, branch: &str) -> Result<(), GitError>;
+
+    /// Equivalent of `git push`
+    fn push(&self, origin: &str, branch: &str) -> Result<(), GitError>;
+
+    /// Set a branch to a given commit
+    fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), GitError>;
+}
+
+/// A git client using git2.rs
+pub struct GitClient<'a> {
     repository: &'a Repository,
     auth: GitAuthenticator,
 }
@@ -80,85 +101,12 @@ pub enum GitError {
     CommitNotFound(Oid),
 }
 
-impl<'a> Git<'a> {
+impl<'a> GitClient<'a> {
     pub fn new(repository: &'a Repository) -> Self {
-        Git {
+        GitClient {
             repository,
             auth: GitAuthenticator::new(),
         }
-    }
-
-    /// Returns the main branch
-    pub fn main(&self) -> Result<String, GitError> {
-        if let Ok(head) = self.repository.find_reference("refs/remotes/origin/HEAD") {
-            if let Some(target) = head.symbolic_target() {
-                if let Some(branch_name) = target.rsplit('/').next() {
-                    return Ok(branch_name.to_string());
-                }
-            }
-        }
-        return Err(GitError::NoMainBranch);
-    }
-
-    pub fn list_commits(&self, until: &str) -> Result<Vec<Commit>, GitError> {
-        let head = self
-            .repository
-            .head()
-            .map_err(|_| GitError::HeadNotPresent)?
-            .target()
-            .ok_or(GitError::HeadNotPresent)?;
-
-        let until_branch = self
-            .repository
-            .find_branch(until, git2::BranchType::Local)
-            .map_err(|_| GitError::BranchNotFound(until.to_string()))?;
-
-        let until_commit = until_branch
-            .get()
-            .peel_to_commit()
-            .map_err(|_| GitError::CommitOfBranchNotFound(until.to_string()))?;
-
-        // make sure until is a parent of HEAD
-        if !self
-            .repository
-            .graph_descendant_of(head, until_commit.id())
-            .map_err(|_| GitError::CannotReach(until_commit.id(), head))?
-        {
-            return Err(GitError::CannotReach(until_commit.id(), head));
-        }
-
-        let mut revwalk = self
-            .repository
-            .revwalk()
-            .map_err(|_| GitError::CannotListCommit)?;
-        revwalk
-            .push_head()
-            .map_err(|_| GitError::CannotListCommit)?;
-
-        let mut commits = Vec::default();
-
-        for oid in revwalk {
-            let oid = oid.map_err(|_| GitError::InvalidOid)?;
-
-            if oid == until_commit.id() {
-                break;
-            }
-
-            // Get the commit
-            let commit = self
-                .repository
-                .find_commit(oid)
-                .map_err(|_| GitError::CommitNotFound(oid))?;
-            // Get the title and the description
-            let mut message = commit.message().unwrap_or_default().splitn(2, '\n');
-            // Title is on the first line of the message
-            let title = message.next().unwrap_or_default().to_string();
-
-            // The commit has to be found, because it's listed from the revwalk
-            commits.push(Commit { oid, title });
-        }
-
-        Ok(commits)
     }
 
     /// Simple push
@@ -272,24 +220,97 @@ impl<'a> Git<'a> {
             | (NegotiationResult::AllowedToPushNewBranch, Ok(())) => Ok(()),
         }
     }
+}
+
+impl<'a> Git for GitClient<'a> {
+    fn main(&self) -> Result<String, GitError> {
+        if let Ok(head) = self.repository.find_reference("refs/remotes/origin/HEAD") {
+            if let Some(target) = head.symbolic_target() {
+                if let Some(branch_name) = target.rsplit('/').next() {
+                    return Ok(branch_name.to_string());
+                }
+            }
+        }
+        return Err(GitError::NoMainBranch);
+    }
+
+    fn list_commits(&self, until: &str) -> Result<Vec<Commit>, GitError> {
+        let head = self
+            .repository
+            .head()
+            .map_err(|_| GitError::HeadNotPresent)?
+            .target()
+            .ok_or(GitError::HeadNotPresent)?;
+
+        let until_branch = self
+            .repository
+            .find_branch(until, git2::BranchType::Local)
+            .map_err(|_| GitError::BranchNotFound(until.to_string()))?;
+
+        let until_commit = until_branch
+            .get()
+            .peel_to_commit()
+            .map_err(|_| GitError::CommitOfBranchNotFound(until.to_string()))?;
+
+        // make sure until is a parent of HEAD
+        if !self
+            .repository
+            .graph_descendant_of(head, until_commit.id())
+            .map_err(|_| GitError::CannotReach(until_commit.id(), head))?
+        {
+            return Err(GitError::CannotReach(until_commit.id(), head));
+        }
+
+        let mut revwalk = self
+            .repository
+            .revwalk()
+            .map_err(|_| GitError::CannotListCommit)?;
+        revwalk
+            .push_head()
+            .map_err(|_| GitError::CannotListCommit)?;
+
+        let mut commits = Vec::default();
+
+        for oid in revwalk {
+            let oid = oid.map_err(|_| GitError::InvalidOid)?;
+
+            if oid == until_commit.id() {
+                break;
+            }
+
+            // Get the commit
+            let commit = self
+                .repository
+                .find_commit(oid)
+                .map_err(|_| GitError::CommitNotFound(oid))?;
+            // Get the title and the description
+            let mut message = commit.message().unwrap_or_default().splitn(2, '\n');
+            // Title is on the first line of the message
+            let title = message.next().unwrap_or_default().to_string();
+
+            // The commit has to be found, because it's listed from the revwalk
+            commits.push(Commit { oid, title });
+        }
+
+        Ok(commits)
+    }
 
     /// Equivalent of `git push --force-with-lease`
-    pub fn push_force_with_lease(&self, origin: &str, branch: &str) -> Result<(), GitError> {
+    fn push_force_with_lease(&self, origin: &str, branch: &str) -> Result<(), GitError> {
         self.custom_push(origin, branch, PushMode::ForceWithLease)
     }
 
     /// Equivalent of `git push --force`
-    pub fn push_force(&self, origin: &str, branch: &str) -> Result<(), GitError> {
+    fn push_force(&self, origin: &str, branch: &str) -> Result<(), GitError> {
         self.custom_push(origin, branch, PushMode::Force)
     }
 
     /// Equivalent of `git push`
-    pub fn push(&self, origin: &str, branch: &str) -> Result<(), GitError> {
+    fn push(&self, origin: &str, branch: &str) -> Result<(), GitError> {
         self.custom_push(origin, branch, PushMode::Normal)
     }
 
-    /// Set a branch to a given commit
-    pub fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), GitError> {
+    fn set_branch_to_commit(&self, branch: &str, oid: Oid) -> Result<(), GitError> {
         let commit = self
             .repository
             .find_commit(oid)
@@ -307,26 +328,26 @@ impl<'a> Git<'a> {
 mod tests {
     use git2::Repository;
 
-    use crate::{Git, GitError};
+    use crate::{Git, GitClient, GitError};
 
     #[test]
     fn test_main_branch() {
         let repository = Repository::open("../../").unwrap();
-        let git = Git::new(&repository);
+        let git = GitClient::new(&repository);
         assert_eq!(git.main().unwrap(), "main");
     }
 
     #[test]
     fn test_list_commits() {
         let repository = Repository::open("../../").unwrap();
-        let git = Git::new(&repository);
+        let git = GitClient::new(&repository);
         git.list_commits("main").expect("to work");
     }
 
     #[test]
     fn test_list_commits_unknown_branch() {
         let repository = Repository::open("../../").unwrap();
-        let git = Git::new(&repository);
+        let git = GitClient::new(&repository);
         let Err(GitError::BranchNotFound(branch_name)) = git.list_commits("whouhouhou") else {
             panic!("expecting an error")
         };

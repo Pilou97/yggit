@@ -1,16 +1,23 @@
 use git2::Oid;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use thiserror::Error;
 use yggit_db::{Database, DatabaseError};
 use yggit_git::{Git, GitError};
 use yggit_parser::{Commit, Line, Parser, ParserError};
 use yggit_ui::{Editor, EditorError};
 
+#[derive(Debug, Error)]
 pub enum CoreError {
+    #[error(transparent)]
     GitError(GitError),
+    #[error(transparent)]
     DatabaseError(DatabaseError),
+    #[error(transparent)]
     EditorError(EditorError),
+    #[error(transparent)]
     ParserError(ParserError),
+    #[error("cannot parse commit id {0}")]
     OidParsing(String),
 }
 

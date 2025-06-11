@@ -89,6 +89,7 @@ impl Parser {
                                 Line::Branch(Branch { origin, name })
                             }
                             Rule::EOI => continue,
+                            Rule::comment => continue, // for now we ignore the comments
                             _ => return Err(ParserError::InvalidToken),
                         };
                         file.push(line);

@@ -6,4 +6,6 @@ origin      = { (!"\n" ~ !":" ~ ANY)+ }
 branch_name = { (!"\n" ~ ANY)+ }
 branch      = { "->" ~ WHITE_SPACE* ~ (origin ~ ":")? ~ branch_name }
 
-file = { SOI ~ ((git_commit | branch)? ~ NEWLINE)* ~ WHITE_SPACE* ~ EOI }
+comment = { "#" ~ (!"\n" ~ ANY)* }
+
+file = { SOI ~ ((git_commit | branch | comment)? ~ NEWLINE)* ~ WHITE_SPACE* ~ EOI }

@@ -10,3 +10,4 @@ yggit-db = { path = "../yggit-db" }
 yggit-ui = { path = "../yggit-ui" }
 yggit-parser = { path = "../yggit-parser" }
 yggit-git = { path = "../yggit-git" }
+thiserror = { workspace = true }

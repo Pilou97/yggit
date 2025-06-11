@@ -984,6 +984,7 @@ version = "0.1.0"
 dependencies = [
  "git2",
  "serde",
+ "thiserror",
  "yggit-db",
  "yggit-git",
  "yggit-parser",

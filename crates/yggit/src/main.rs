@@ -56,7 +56,7 @@ fn main() {
     match args.command {
         Commands::Push(Push { force, onto }) => match push(git, db, editor, force, onto) {
             Ok(()) => println!("everything is fine"),
-            Err(_) => println!("there was an error"),
+            Err(err) => println!("{}", err),
         },
     }
 }

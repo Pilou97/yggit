@@ -972,6 +972,7 @@ version = "1.0.0"
 dependencies = [
  "clap",
  "git2",
+ "yggit-config",
  "yggit-core",
  "yggit-db",
  "yggit-git",

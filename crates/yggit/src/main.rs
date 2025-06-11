@@ -1,5 +1,6 @@
 use clap::{arg, command, Args, Parser, Subcommand};
 use git2::Repository;
+use yggit_config::{Config, GitConfig};
 use yggit_core::push;
 use yggit_db::GitDatabase;
 use yggit_git::GitClient;
@@ -32,26 +33,14 @@ pub struct Push {
 fn main() {
     let args = Cli::parse();
 
-    // todo: open the git config
-    // todo: open the repository
-    // todo: init the db
-    // todo: init the editor
-
+    // open the repository
     let repository = Repository::discover(".").expect("you need to open a valid repository");
-    let config = repository.config().expect("config cannot be loaded found");
-    let name = config
-        .get_string("user.name")
-        .expect("you need to set a name in your git config");
-    let email = config
-        .get_string("user.email")
-        .expect("you need to set an email in your git config");
-    let editor = config
-        .get_string("core.editor")
-        .expect("you need to define editor");
 
+    // init the dependencies
+    let config = GitConfig::new(&repository).expect("invalid config");
     let git = GitClient::new(&repository);
-    let db = GitDatabase::new(&repository, name, email);
-    let editor = GitEditor::new(editor.to_string());
+    let db = GitDatabase::new(&repository, config.name().into(), config.email().into());
+    let editor = GitEditor::new(config.editor().to_string());
 
     match args.command {
         Commands::Push(Push { force, onto }) => match push(git, db, editor, force, onto) {

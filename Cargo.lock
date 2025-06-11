@@ -979,6 +979,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "yggit-config"
+version = "0.1.0"
+dependencies = [
+ "git2",
+ "thiserror",
+]
+
+[[package]]
 name = "yggit-core"
 version = "0.1.0"
 dependencies = [

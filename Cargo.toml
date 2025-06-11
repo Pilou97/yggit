@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/yggit",
+    "crates/yggit", "crates/yggit-config",
     "crates/yggit-core",
     "crates/yggit-db",
     "crates/yggit-git",

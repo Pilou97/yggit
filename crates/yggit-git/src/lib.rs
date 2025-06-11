@@ -291,6 +291,7 @@ impl<'a> Git for GitClient<'a> {
             // The commit has to be found, because it's listed from the revwalk
             commits.push(Commit { oid, title });
         }
+        commits.reverse();
 
         Ok(commits)
     }

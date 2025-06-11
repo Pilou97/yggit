@@ -12,4 +12,6 @@ repository = "https://github.com/Pilou97/yggit"
 yggit-db = { path = "../yggit-db" }
 yggit-git = { path = "../yggit-git" }
 yggit-ui = { path = "../yggit-ui" }
+yggit-core = { path = "../yggit-core" }
 clap = { workspace = true, features = ["derive"] }
+git2 = { workspace = true }

@@ -15,6 +15,12 @@ pub struct GitEditor {
     editor: String,
 }
 
+impl GitEditor {
+    pub fn new(editor: String) -> GitEditor {
+        GitEditor { editor }
+    }
+}
+
 const COMMENTS: &str = r#"
 # Here is how to use yggit
 # 

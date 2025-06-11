@@ -46,16 +46,12 @@ pub trait Database {
 }
 
 impl<'a> GitDatabase<'a> {
-    pub fn new(
-        repository: &'a Repository,
-        name: String,
-        email: String,
-    ) -> Result<Self, DatabaseError> {
-        Ok(GitDatabase {
+    pub fn new(repository: &'a Repository, name: String, email: String) -> Self {
+        GitDatabase {
             repository,
             name,
             email,
-        })
+        }
     }
 
     /// Read the notes stored for the given Oid
@@ -150,7 +146,7 @@ mod tests {
         let id = repo.head().unwrap().peel_to_commit().unwrap().id();
 
         // Then we can do our stuff
-        let database = GitDatabase::new(&repo, "My name".into(), "My email".into()).unwrap();
+        let database = GitDatabase::new(&repo, "My name".into(), "My email".into());
 
         assert!(database.read::<String>(&id, "hello").unwrap().is_none());
         assert!(database.write(&id, "hello", &"data".to_string()).is_ok());

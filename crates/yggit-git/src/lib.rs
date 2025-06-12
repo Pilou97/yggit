@@ -222,7 +222,7 @@ impl<'a> GitClient<'a> {
     }
 }
 
-impl<'a> Git for GitClient<'a> {
+impl Git for GitClient<'_> {
     fn main(&self) -> Result<String, GitError> {
         if let Ok(head) = self.repository.find_reference("refs/remotes/origin/HEAD") {
             if let Some(target) = head.symbolic_target() {
@@ -231,7 +231,7 @@ impl<'a> Git for GitClient<'a> {
                 }
             }
         }
-        return Err(GitError::NoMainBranch);
+        Err(GitError::NoMainBranch)
     }
 
     fn list_commits(&self, until: &str) -> Result<Vec<Commit>, GitError> {

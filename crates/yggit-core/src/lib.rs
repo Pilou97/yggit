@@ -76,7 +76,7 @@ pub fn push(
                 sha: commit.oid.to_string(),
                 title: commit.title.to_string(),
             });
-            let branch_line = branches.get(&commit).map(|branch| {
+            let branch_line = branches.get(commit).map(|branch| {
                 Line::Branch(yggit_parser::Branch {
                     origin: branch.origin.clone(),
                     name: branch.target.clone(),
@@ -103,7 +103,7 @@ pub fn push(
     let branches = parsed_todo
         .windows(2)
         .filter_map(|tuple| {
-            let fst = tuple.get(0);
+            let fst = tuple.first();
             let snd = tuple.get(1);
             match (fst, snd) {
                 (Some(Line::Commit(commit)), Some(Line::Branch(branch))) => {
@@ -124,24 +124,20 @@ pub fn push(
         .collect::<Result<HashMap<Oid, Branch>, CoreError>>()?;
 
     // Now we need to save the state
-    commits
-        .iter()
-        .map(|commit| -> Result<(), CoreError> {
-            database
-                .delete(&commit.oid, "branch")
-                .map_err(CoreError::DatabaseError)?;
-
-            match branches.get(&commit.oid) {
-                Some(branch) => {
-                    database
-                        .write(&commit.oid, "branch", branch)
-                        .map_err(CoreError::DatabaseError)?;
-                    Ok(())
-                }
-                None => Ok(()),
+    commits.iter().try_for_each(|commit| {
+        database
+            .delete(&commit.oid, "branch")
+            .map_err(CoreError::DatabaseError)?;
+        match branches.get(&commit.oid) {
+            Some(branch) => {
+                database
+                    .write(&commit.oid, "branch", branch)
+                    .map_err(CoreError::DatabaseError)?;
+                Ok(())
             }
-        })
-        .collect::<Result<(), CoreError>>()?;
+            None => Ok(()),
+        }
+    })?;
 
     if no_push {
         return Ok(());
@@ -205,7 +201,7 @@ pub fn show(
                 sha: commit.oid.to_string(),
                 title: commit.title.to_string(),
             });
-            let branch_line = branches.get(&commit).map(|branch| {
+            let branch_line = branches.get(commit).map(|branch| {
                 Line::Branch(yggit_parser::Branch {
                     origin: branch.origin.clone(),
                     name: branch.target.clone(),
@@ -228,7 +224,7 @@ pub fn show(
     Ok(())
 }
 
-const APPLY_FOOTER: &str = r#"
+const _APPLY_FOOTER: &str = r#"
 # Here is how to use yggit-apply
 # 
 # Commands:
@@ -247,100 +243,5 @@ pub fn apply(
     editor: impl Editor,
     onto: Option<String>,
 ) -> Result<(), CoreError> {
-    let onto = match onto {
-        Some(onto) => onto,
-        None => git.main().map_err(CoreError::GitError)?,
-    };
-
-    let commits = git.list_commits(&onto).map_err(CoreError::GitError)?;
-
-    // Now let's retrieve the branch for the existing commits
-    let branches = commits
-        .iter()
-        .filter_map(
-            |commit| match database.read::<Branch>(&commit.oid, "branch") {
-                Ok(Some(branch)) => Some(Ok((commit.clone(), branch))),
-                Ok(None) => None,
-                Err(err) => Some(Err(err)),
-            },
-        )
-        .collect::<Result<HashMap<yggit_git::Commit, Branch>, DatabaseError>>()
-        .map_err(CoreError::DatabaseError)?;
-
-    // Let's create a string with this, so that the user can edit it
-    let todo = commits
-        .iter()
-        .flat_map(|commit| {
-            let commit_line = Line::Commit(Commit {
-                sha: commit.oid.to_string(),
-                title: commit.title.to_string(),
-            });
-            let branch_line = branches.get(&commit).map(|branch| {
-                Line::Branch(yggit_parser::Branch {
-                    origin: branch.origin.clone(),
-                    name: branch.target.clone(),
-                })
-            });
-            match branch_line {
-                Some(branch_line) => vec![commit_line, branch_line],
-                None => vec![commit_line],
-            }
-        })
-        .map(|line| line.to_string())
-        .collect::<Vec<String>>()
-        .join("\n");
-
-    // Now the user should modify the todo (or not)
-    let todo = editor
-        .edit(todo, APPLY_FOOTER)
-        .map_err(CoreError::EditorError)?;
-
-    // Now we can parse it
-    let parsed_todo = Parser::parse_file(&todo).map_err(CoreError::ParserError)?;
-
-    // Now we retrieve the branches and the correspoding oid from the todo
-    let branches = parsed_todo
-        .windows(2)
-        .filter_map(|tuple| {
-            let fst = tuple.get(0);
-            let snd = tuple.get(1);
-            match (fst, snd) {
-                (Some(Line::Commit(commit)), Some(Line::Branch(branch))) => {
-                    match Oid::from_str(&commit.sha) {
-                        Ok(oid) => Some(Ok((
-                            oid,
-                            Branch {
-                                target: branch.name.clone(),
-                                origin: branch.origin.clone(),
-                            },
-                        ))),
-                        Err(_) => Some(Err(CoreError::OidParsing(commit.sha.clone()))),
-                    }
-                }
-                _ => None,
-            }
-        })
-        .collect::<Result<HashMap<Oid, Branch>, CoreError>>()?;
-
-    // Now we need to save the state
-    commits
-        .iter()
-        .map(|commit| -> Result<(), CoreError> {
-            database
-                .delete(&commit.oid, "branch")
-                .map_err(CoreError::DatabaseError)?;
-
-            match branches.get(&commit.oid) {
-                Some(branch) => {
-                    database
-                        .write(&commit.oid, "branch", branch)
-                        .map_err(CoreError::DatabaseError)?;
-                    Ok(())
-                }
-                None => Ok(()),
-            }
-        })
-        .collect::<Result<(), CoreError>>()?;
-
-    Ok(())
+    push(git, database, editor, false, onto, true)
 }

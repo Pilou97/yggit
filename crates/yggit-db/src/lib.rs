@@ -63,7 +63,7 @@ impl<'a> GitDatabase<'a> {
     /// Read the notes stored for the given Oid
     fn read_note(&self, oid: &Oid) -> HashMap<String, Value> {
         self.repository
-            .find_note(None, oid.clone())
+            .find_note(None, *oid)
             .map(|note| {
                 let message = note.message().unwrap_or_default();
                 serde_json::from_str::<HashMap<String, Value>>(message).unwrap_or_default()
@@ -76,13 +76,13 @@ impl<'a> GitDatabase<'a> {
         let db = serde_json::to_string(&note).map_err(|_| DatabaseError::CannotSerialize)?;
         let author = Signature::now(&self.name, &self.email).unwrap();
         self.repository
-            .note(&author, &author, None, oid.clone(), &db, true)
+            .note(&author, &author, None, *oid, &db, true)
             .map(|_| ())
             .map_err(|_| DatabaseError::CannotClose)
     }
 }
 
-impl<'a> DatabaseWrite for GitDatabase<'a> {
+impl DatabaseWrite for GitDatabase<'_> {
     fn write<D>(&self, oid: &Oid, key: &str, data: &D) -> Result<(), DatabaseError>
     where
         D: Serialize,
@@ -95,7 +95,7 @@ impl<'a> DatabaseWrite for GitDatabase<'a> {
         self.write_note(oid, note)
     }
 }
-impl<'a> DatabaseRead for GitDatabase<'a> {
+impl DatabaseRead for GitDatabase<'_> {
     fn read<D>(&self, oid: &Oid, key: &str) -> Result<Option<D>, DatabaseError>
     where
         D: DeserializeOwned,
@@ -111,7 +111,7 @@ impl<'a> DatabaseRead for GitDatabase<'a> {
     }
 }
 
-impl<'a> DatabaseDelete for GitDatabase<'a> {
+impl DatabaseDelete for GitDatabase<'_> {
     fn delete(&self, oid: &Oid, key: &str) -> Result<(), DatabaseError> {
         let mut note = self.read_note(oid);
         note.remove(key);
@@ -119,7 +119,7 @@ impl<'a> DatabaseDelete for GitDatabase<'a> {
     }
 }
 
-impl<'a> Database for GitDatabase<'a> {}
+impl Database for GitDatabase<'_> {}
 
 #[cfg(test)]
 mod tests {

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -54,7 +56,7 @@ macro_rules! as_str {
 impl Parser {
     pub fn parse_file(file: &str) -> Result<Vec<Line>, ParserError> {
         use pest::Parser;
-        let pairs = Self::parse(Rule::file, &file).map_err(|_| ParserError::IsNotFile)?;
+        let pairs = Self::parse(Rule::file, file).map_err(|_| ParserError::IsNotFile)?;
 
         let mut file = vec![];
         for pair in pairs {
@@ -106,13 +108,13 @@ impl Parser {
     }
 }
 
-impl ToString for Line {
-    fn to_string(&self) -> String {
+impl Display for Line {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Line::Commit(commit) => format!("{} {}", commit.sha, commit.title),
+            Line::Commit(commit) => write!(f, "{} {}", commit.sha, commit.title),
             Line::Branch(branch) => match &branch.origin {
-                Some(origin) => format!("-> {}:{}", origin, branch.name),
-                None => format!("-> {}", branch.name),
+                Some(origin) => write!(f, "-> {}:{}", origin, branch.name),
+                None => write!(f, "-> {}", branch.name),
             },
         }
     }

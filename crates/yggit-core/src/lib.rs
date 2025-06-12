@@ -144,3 +144,56 @@ pub fn push(
         .collect::<Result<Vec<()>, CoreError>>()?;
     Ok(())
 }
+
+pub fn show(
+    git: impl Git,
+    db: impl Database,
+    editor: impl Editor,
+    onto: Option<String>,
+) -> Result<(), CoreError> {
+    let onto = match onto {
+        Some(onto) => onto,
+        None => git.main().map_err(CoreError::GitError)?,
+    };
+
+    let commits = git.list_commits(&onto).map_err(CoreError::GitError)?;
+
+    // Now let's retrieve the branch for the existing commits
+    let branches = commits
+        .iter()
+        .filter_map(|commit| match db.read::<Branch>(&commit.oid, "branch") {
+            Ok(Some(branch)) => Some(Ok((commit.clone(), branch))),
+            Ok(None) => None,
+            Err(err) => Some(Err(err)),
+        })
+        .collect::<Result<HashMap<yggit_git::Commit, Branch>, DatabaseError>>()
+        .map_err(CoreError::DatabaseError)?;
+
+    // Let's create a string with this, so that the user can edit it
+    let todo = commits
+        .iter()
+        .flat_map(|commit| {
+            let commit_line = Line::Commit(Commit {
+                sha: commit.oid.to_string(),
+                title: commit.title.to_string(),
+            });
+            let branch_line = branches.get(&commit).map(|branch| {
+                Line::Branch(yggit_parser::Branch {
+                    origin: branch.origin.clone(),
+                    name: branch.target.clone(),
+                })
+            });
+            match branch_line {
+                Some(branch_line) => vec![commit_line, branch_line],
+                None => vec![commit_line],
+            }
+        })
+        .map(|line| line.to_string())
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    // Now the user should modify the todo (or not)
+    let _todo = editor.edit(todo).map_err(CoreError::EditorError)?;
+
+    Ok(())
+}

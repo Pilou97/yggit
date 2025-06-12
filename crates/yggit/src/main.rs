@@ -1,7 +1,7 @@
 use clap::{arg, command, Args, Parser, Subcommand};
 use git2::Repository;
 use yggit_config::{Config, GitConfig};
-use yggit_core::{apply, push, show};
+use yggit_core::{apply, push, show, CoreError};
 use yggit_db::GitDatabase;
 use yggit_git::GitClient;
 use yggit_ui::GitEditor;
@@ -50,7 +50,7 @@ pub struct Apply {
     onto: Option<String>,
 }
 
-fn main() {
+fn main() -> Result<(), CoreError> {
     let args = Cli::parse();
 
     // open the repository
@@ -59,7 +59,7 @@ fn main() {
     // init the dependencies
     let config = GitConfig::new(&repository).expect("invalid config");
     let git = GitClient::new(&repository);
-    let db = GitDatabase::new(&repository, config.name().into(), config.email().into());
+    let database = GitDatabase::new(&repository, config.name().into(), config.email().into());
     let editor = GitEditor::new(config.editor().to_string());
 
     match args.command {
@@ -67,17 +67,8 @@ fn main() {
             force,
             onto,
             no_push,
-        }) => match push(git, db, editor, force, onto, no_push) {
-            Ok(()) => println!("everything is fine"),
-            Err(err) => println!("{}", err),
-        },
-        Commands::Show(Show { onto }) => match show(git, db, editor, onto) {
-            Ok(()) => (),
-            Err(err) => println!("{}", err),
-        },
-        Commands::Apply(Apply { onto }) => match apply(git, db, editor, onto) {
-            Ok(()) => (),
-            Err(err) => println!("{}", err),
-        },
+        }) => push(git, database, editor, force, onto, no_push),
+        Commands::Show(Show { onto }) => show(git, database, editor, onto),
+        Commands::Apply(Apply { onto }) => apply(git, database, editor, onto),
     }
 }

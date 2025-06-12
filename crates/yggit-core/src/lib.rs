@@ -29,7 +29,7 @@ struct Branch {
 
 pub fn push(
     git: impl Git,
-    db: impl Database,
+    database: impl Database,
     editor: impl Editor,
     force: bool,
     onto: Option<String>,
@@ -45,11 +45,13 @@ pub fn push(
     // Now let's retrieve the branch for the existing commits
     let branches = commits
         .iter()
-        .filter_map(|commit| match db.read::<Branch>(&commit.oid, "branch") {
-            Ok(Some(branch)) => Some(Ok((commit.clone(), branch))),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
-        })
+        .filter_map(
+            |commit| match database.read::<Branch>(&commit.oid, "branch") {
+                Ok(Some(branch)) => Some(Ok((commit.clone(), branch))),
+                Ok(None) => None,
+                Err(err) => Some(Err(err)),
+            },
+        )
         .collect::<Result<HashMap<yggit_git::Commit, Branch>, DatabaseError>>()
         .map_err(CoreError::DatabaseError)?;
 
@@ -110,12 +112,14 @@ pub fn push(
     commits
         .iter()
         .map(|commit| -> Result<(), CoreError> {
-            db.delete(&commit.oid, "branch")
+            database
+                .delete(&commit.oid, "branch")
                 .map_err(CoreError::DatabaseError)?;
 
             match branches.get(&commit.oid) {
                 Some(branch) => {
-                    db.write(&commit.oid, "branch", branch)
+                    database
+                        .write(&commit.oid, "branch", branch)
                         .map_err(CoreError::DatabaseError)?;
                     Ok(())
                 }
@@ -152,7 +156,7 @@ pub fn push(
 
 pub fn show(
     git: impl Git,
-    db: impl DatabaseRead,
+    database: impl DatabaseRead,
     editor: impl Editor,
     onto: Option<String>,
 ) -> Result<(), CoreError> {
@@ -166,11 +170,13 @@ pub fn show(
     // Now let's retrieve the branch for the existing commits
     let branches = commits
         .iter()
-        .filter_map(|commit| match db.read::<Branch>(&commit.oid, "branch") {
-            Ok(Some(branch)) => Some(Ok((commit.clone(), branch))),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
-        })
+        .filter_map(
+            |commit| match database.read::<Branch>(&commit.oid, "branch") {
+                Ok(Some(branch)) => Some(Ok((commit.clone(), branch))),
+                Ok(None) => None,
+                Err(err) => Some(Err(err)),
+            },
+        )
         .collect::<Result<HashMap<yggit_git::Commit, Branch>, DatabaseError>>()
         .map_err(CoreError::DatabaseError)?;
 
@@ -205,9 +211,9 @@ pub fn show(
 
 pub fn apply(
     git: impl Git,
-    db: impl Database,
+    database: impl Database,
     editor: impl Editor,
     onto: Option<String>,
 ) -> Result<(), CoreError> {
-    push(git, db, editor, false, onto, true)
+    push(git, database, editor, false, onto, true)
 }

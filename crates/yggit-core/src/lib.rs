@@ -33,6 +33,7 @@ pub fn push(
     editor: impl Editor,
     force: bool,
     onto: Option<String>,
+    no_push: bool,
 ) -> Result<(), CoreError> {
     let onto = match onto {
         Some(onto) => onto,
@@ -123,6 +124,10 @@ pub fn push(
         })
         .collect::<Result<(), CoreError>>()?;
 
+    if no_push {
+        return Ok(());
+    }
+
     // Now we can push
     branches
         .into_iter()
@@ -196,4 +201,13 @@ pub fn show(
     let _todo = editor.edit(todo).map_err(CoreError::EditorError)?;
 
     Ok(())
+}
+
+pub fn apply(
+    git: impl Git,
+    db: impl Database,
+    editor: impl Editor,
+    onto: Option<String>,
+) -> Result<(), CoreError> {
+    push(git, db, editor, false, onto, true)
 }

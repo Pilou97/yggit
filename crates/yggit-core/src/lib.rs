@@ -2,7 +2,7 @@ use git2::Oid;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
-use yggit_db::{Database, DatabaseError};
+use yggit_db::{Database, DatabaseError, DatabaseRead};
 use yggit_git::{Git, GitError};
 use yggit_parser::{Commit, Line, Parser, ParserError};
 use yggit_ui::{Editor, EditorError};
@@ -147,7 +147,7 @@ pub fn push(
 
 pub fn show(
     git: impl Git,
-    db: impl Database,
+    db: impl DatabaseRead,
     editor: impl Editor,
     onto: Option<String>,
 ) -> Result<(), CoreError> {

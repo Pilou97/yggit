@@ -30,20 +30,26 @@ pub enum DatabaseError {
     CannotClose,
 }
 
-pub trait Database {
-    /// Stores data in the commit note
-    fn write<D>(&self, oid: &Oid, key: &str, data: &D) -> Result<(), DatabaseError>
-    where
-        D: Serialize;
-
+pub trait DatabaseRead {
     /// Retrieve data from the commit note
     fn read<D>(&self, oid: &Oid, key: &str) -> Result<Option<D>, DatabaseError>
     where
         D: DeserializeOwned;
+}
 
+pub trait DatabaseWrite {
+    /// Stores data in the commit note
+    fn write<D>(&self, oid: &Oid, key: &str, data: &D) -> Result<(), DatabaseError>
+    where
+        D: Serialize;
+}
+
+pub trait DatabaseDelete {
     /// Delete the key for a given note
     fn delete(&self, oid: &Oid, key: &str) -> Result<(), DatabaseError>;
 }
+
+pub trait Database: DatabaseRead + DatabaseDelete + DatabaseWrite {}
 
 impl<'a> GitDatabase<'a> {
     pub fn new(repository: &'a Repository, name: String, email: String) -> Self {
@@ -76,7 +82,7 @@ impl<'a> GitDatabase<'a> {
     }
 }
 
-impl<'a> Database for GitDatabase<'a> {
+impl<'a> DatabaseWrite for GitDatabase<'a> {
     fn write<D>(&self, oid: &Oid, key: &str, data: &D) -> Result<(), DatabaseError>
     where
         D: Serialize,
@@ -88,7 +94,8 @@ impl<'a> Database for GitDatabase<'a> {
 
         self.write_note(oid, note)
     }
-
+}
+impl<'a> DatabaseRead for GitDatabase<'a> {
     fn read<D>(&self, oid: &Oid, key: &str) -> Result<Option<D>, DatabaseError>
     where
         D: DeserializeOwned,
@@ -102,7 +109,9 @@ impl<'a> Database for GitDatabase<'a> {
             .map(Some)
             .map_err(|_| DatabaseError::CannotDeserializeValue)
     }
+}
 
+impl<'a> DatabaseDelete for GitDatabase<'a> {
     fn delete(&self, oid: &Oid, key: &str) -> Result<(), DatabaseError> {
         let mut note = self.read_note(oid);
         note.remove(key);
@@ -110,9 +119,11 @@ impl<'a> Database for GitDatabase<'a> {
     }
 }
 
+impl<'a> Database for GitDatabase<'a> {}
+
 #[cfg(test)]
 mod tests {
-    use crate::{Database, GitDatabase};
+    use crate::{DatabaseDelete, DatabaseRead, DatabaseWrite, GitDatabase};
     use git2::{Repository, Signature};
     use std::io::Write;
     use std::{fs::File, path::Path};

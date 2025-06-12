@@ -8,7 +8,7 @@ pub enum EditorError {
 }
 
 pub trait Editor {
-    fn edit(&self, content: String) -> Result<String, EditorError>;
+    fn edit(&self, content: String, footer: &'static str) -> Result<String, EditorError>;
 }
 
 pub struct GitEditor {
@@ -21,24 +21,11 @@ impl GitEditor {
     }
 }
 
-const COMMENTS: &str = r#"
-# Here is how to use yggit
-# 
-# Commands:
-# -> <branch> add a branch to the above commit
-# -> <origin>:<branch> add a branch to the above commit
-# 
-# What happens next?
-#  - All branches are pushed on origin, except if you specified a custom origin
-#
-# It's not a rebase, you can't edit commits nor reorder them
-"#;
-
 impl Editor for GitEditor {
-    fn edit(&self, content: String) -> Result<String, EditorError> {
+    fn edit(&self, content: String, footer: &'static str) -> Result<String, EditorError> {
         // We need to create a file
         let file_path = "/tmp/yggit";
-        let output = format!("{}\n{}", content, COMMENTS);
+        let output = format!("{}\n{}", content, footer);
         std::fs::write(file_path, output)
             .map_err(|_| EditorError::CannotEdit("cannot initiate todo's list"))?;
 

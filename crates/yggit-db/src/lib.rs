@@ -73,10 +73,10 @@ impl<'a> GitDatabase<'a> {
 
     /// Write the note and erase the old one
     fn write_note(&self, oid: &Oid, note: HashMap<String, Value>) -> Result<(), DatabaseError> {
-        let db = serde_json::to_string(&note).map_err(|_| DatabaseError::CannotSerialize)?;
+        let note = serde_json::to_string(&note).map_err(|_| DatabaseError::CannotSerialize)?;
         let author = Signature::now(&self.name, &self.email).unwrap();
         self.repository
-            .note(&author, &author, None, *oid, &db, true)
+            .note(&author, &author, None, *oid, &note, true)
             .map(|_| ())
             .map_err(|_| DatabaseError::CannotClose)
     }

@@ -7,6 +7,9 @@ license = "MIT AND Apache-2.0"
 documentation = "https://github.com/Pilou97/yggit"
 homepage = "https://github.com/Pilou97/yggit"
 repository = "https://github.com/Pilou97/yggit"
+readme = "https://github.com/Pilou97/yggit"
+keywords = ["cli", "workflow", "git"]
+categories = ["cli"]
 
 [dependencies]
 yggit-db = { path = "../yggit-db" }
@@ -16,3 +19,6 @@ yggit-core = { path = "../yggit-core" }
 yggit-config = { path = "../yggit-config" }
 clap = { workspace = true, features = ["derive"] }
 git2 = { workspace = true }
+
+[lints]
+workspace = true

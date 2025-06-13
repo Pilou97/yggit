@@ -1,7 +1,15 @@
 [package]
 name = "yggit-db"
-version = "0.1.0"
-edition = "2024"
+version = "1.0.0"
+edition = "2021"
+description = "abstraction over git notes"
+license = "MIT AND Apache-2.0"
+documentation = "https://github.com/Pilou97/yggit"
+homepage = "https://github.com/Pilou97/yggit"
+repository = "https://github.com/Pilou97/yggit"
+readme = "https://github.com/Pilou97/yggit"
+keywords = ["cli", "workflow", "git"]
+categories = ["cli"]
 
 [dependencies]
 git2 = { workspace = true }
@@ -11,3 +19,6 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
+
+[lints]
+workspace = true

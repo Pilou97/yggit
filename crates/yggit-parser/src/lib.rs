@@ -136,6 +136,9 @@ afd1ebed7162bc404e0cc169d25fb4b01806eb2c chore: upgrade rust toolchain
 
 afd1ebed7162bc404e0cc169d25fb4b01806eb2c chore: upgrade rust toolchain
 -> origin:awesome
+
+afd1ebed7162bc404e0cc169d25fb4b01806eb2c :tada: hello gitmoji
+-> origin:awesome
 "
         );
 
@@ -162,6 +165,14 @@ afd1ebed7162bc404e0cc169d25fb4b01806eb2c chore: upgrade rust toolchain
                 Line::Commit(Commit {
                     sha: "afd1ebed7162bc404e0cc169d25fb4b01806eb2c".into(),
                     title: "chore: upgrade rust toolchain".into()
+                }),
+                Line::Branch(Branch {
+                    name: "awesome".into(),
+                    origin: Some("origin".to_string())
+                }),
+                Line::Commit(Commit {
+                    sha: "afd1ebed7162bc404e0cc169d25fb4b01806eb2c".into(),
+                    title: ":tada: hello gitmoji".into()
                 }),
                 Line::Branch(Branch {
                     name: "awesome".into(),

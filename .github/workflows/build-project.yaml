@@ -17,7 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run formatter
-        run: cargo fmt
+        run: |
+          rustup component add rustfmt
+          cargo fmt
       - name: Run linter
         run: cargo clippy
       - name: Audit

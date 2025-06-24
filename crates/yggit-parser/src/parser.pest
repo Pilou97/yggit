@@ -1,0 +1,11 @@
+commit_hash  = { ASCII_HEX_DIGIT{40} }
+commit_title = { (!"\n" ~ ANY)+ }
+git_commit   = { commit_hash ~ WHITE_SPACE ~ commit_title }
+
+origin      = { (!"\n" ~ !":" ~ ANY)+ }
+branch_name = { (!"\n" ~ ANY)+ }
+branch      = { "->" ~ WHITE_SPACE* ~ (origin ~ ":")? ~ branch_name }
+
+comment = { "#" ~ (!"\n" ~ ANY)* }
+
+file = { SOI ~ ((git_commit | branch | comment)? ~ NEWLINE)* ~ WHITE_SPACE* ~ EOI }

@@ -6,9 +6,10 @@ on:
       - main
     paths:
       - editor/**
-      - src/**
+      - crates/**
       - Cargo.lock
       - Cargo.toml
+      - clippy.toml
 
 jobs:
   build:
@@ -16,13 +17,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run formatter
-        run: cargo fmt
+        run: |
+          rustup component add rustfmt
+          cargo fmt
       - name: Run linter
-        run: cargo clippy -- --deny warnings
+        run: |
+          rustup component add clippy
+          cargo clippy
       - name: Audit
         run: |
           cargo install cargo-audit
           cargo audit --deny warnings
+      - name: Check for useless dependencies
+        run: |
+          cargo install cargo-machete
+          cargo machete
       - name: Run tests
         run: cargo test
       - name: Build the project

@@ -1,0 +1,19 @@
+[package]
+name = "yggit-test"
+version = "1.0.0"
+edition = "2021"
+description = "yggit test library"
+license = "MIT AND Apache-2.0"
+documentation = "https://github.com/Pilou97/yggit"
+homepage = "https://github.com/Pilou97/yggit"
+repository = "https://github.com/Pilou97/yggit"
+readme = "https://github.com/Pilou97/yggit"
+keywords = ["cli", "workflow", "git"]
+categories = ["cli"]
+
+[dependencies]
+git2 = { workspace = true }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

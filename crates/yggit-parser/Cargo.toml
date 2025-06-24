@@ -1,0 +1,20 @@
+[package]
+name = "yggit-parser"
+version = "1.0.0"
+edition = "2021"
+description = "implement rebase like parsing for yggit"
+license = "MIT AND Apache-2.0"
+documentation = "https://github.com/Pilou97/yggit"
+homepage = "https://github.com/Pilou97/yggit"
+repository = "https://github.com/Pilou97/yggit"
+readme = "https://github.com/Pilou97/yggit"
+keywords = ["cli", "workflow", "git"]
+categories = ["cli"]
+
+[dependencies]
+pest = { version = "2.8.0" }
+pest_derive = "2.8.0"
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

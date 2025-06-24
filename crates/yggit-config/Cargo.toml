@@ -1,0 +1,19 @@
+[package]
+name = "yggit-config"
+version = "1.0.0"
+edition = "2021"
+description = "extracts git config and enforce value (see yggit)"
+license = "MIT AND Apache-2.0"
+documentation = "https://github.com/Pilou97/yggit"
+homepage = "https://github.com/Pilou97/yggit"
+repository = "https://github.com/Pilou97/yggit"
+readme = "https://github.com/Pilou97/yggit"
+keywords = ["cli", "workflow", "git"]
+categories = ["cli"]
+
+[dependencies]
+git2 = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

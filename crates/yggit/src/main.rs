@@ -1,0 +1,74 @@
+use clap::{arg, command, Args, Parser, Subcommand};
+use git2::Repository;
+use yggit_config::{Config, GitConfig};
+use yggit_core::{apply, push, show, CoreError};
+use yggit_db::GitDatabase;
+use yggit_git::GitClient;
+use yggit_ui::GitEditor;
+
+#[derive(Debug, Parser)]
+#[command(name = "yggit")]
+#[command(about = "Git stacked workflow manager", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    Push(Push),
+    Show(Show),
+    Apply(Apply),
+}
+
+#[derive(Debug, Args)]
+pub struct Push {
+    /// use --force to force the branch updates
+    /// by default it has the behavior of force-with-lease
+    #[arg(short, long, default_value_t = false)]
+    force: bool,
+    #[arg(long)]
+    /// The starting point of your branch
+    onto: Option<String>,
+    /// use --no-push to only change the commit notes
+    /// by default the push will be done
+    #[arg(short, long, default_value_t = true)]
+    no_push: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct Show {
+    #[arg(long)]
+    /// The starting point of your branch
+    onto: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct Apply {
+    #[arg(long)]
+    /// The starting point of your branch
+    onto: Option<String>,
+}
+
+fn main() -> Result<(), CoreError> {
+    let args = Cli::parse();
+
+    // open the repository
+    let repository = Repository::discover(".").expect("you need to open a valid repository");
+
+    // init the dependencies
+    let config = GitConfig::new(&repository).expect("invalid config");
+    let git = GitClient::new(&repository);
+    let database = GitDatabase::new(&repository, config.name().into(), config.email().into());
+    let editor = GitEditor::new(config.editor().to_string());
+
+    match args.command {
+        Commands::Push(Push {
+            force,
+            onto,
+            no_push,
+        }) => push(git, database, editor, force, onto, no_push),
+        Commands::Show(Show { onto }) => show(git, database, editor, onto),
+        Commands::Apply(Apply { onto }) => apply(git, database, editor, onto),
+    }
+}

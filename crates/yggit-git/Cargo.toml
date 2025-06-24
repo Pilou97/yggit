@@ -1,0 +1,23 @@
+[package]
+name = "yggit-git"
+version = "1.0.0"
+edition = "2021"
+description = "abstraction over git using git2"
+license = "MIT AND Apache-2.0"
+documentation = "https://github.com/Pilou97/yggit"
+homepage = "https://github.com/Pilou97/yggit"
+repository = "https://github.com/Pilou97/yggit"
+readme = "https://github.com/Pilou97/yggit"
+keywords = ["cli", "workflow", "git"]
+categories = ["cli"]
+
+[dependencies]
+git2 = { workspace = true }
+thiserror = { workspace = true }
+auth-git2 = { workspace = true }
+
+[dev-dependencies]
+yggit-test = { path = "../yggit-test" }
+
+[lints]
+workspace = true

@@ -21,7 +21,9 @@ jobs:
           rustup component add rustfmt
           cargo fmt
       - name: Run linter
-        run: cargo clippy
+        run: |
+          rustup component add clippy
+          cargo clippy
       - name: Audit
         run: |
           cargo install cargo-audit

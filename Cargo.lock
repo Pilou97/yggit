@@ -1007,8 +1007,8 @@ dependencies = [
  "git2",
  "serde",
  "serde_json",
- "tempfile",
  "thiserror",
+ "yggit-test",
 ]
 
 [[package]]
@@ -1017,8 +1017,8 @@ version = "1.0.0"
 dependencies = [
  "auth-git2",
  "git2",
- "tempfile",
  "thiserror",
+ "yggit-test",
 ]
 
 [[package]]
@@ -1028,6 +1028,14 @@ dependencies = [
  "pest",
  "pest_derive",
  "thiserror",
+]
+
+[[package]]
+name = "yggit-test"
+version = "1.0.0"
+dependencies = [
+ "git2",
+ "tempfile",
 ]
 
 [[package]]

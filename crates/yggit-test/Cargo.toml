@@ -1,8 +1,8 @@
 [package]
-name = "yggit-git"
+name = "yggit-test"
 version = "1.0.0"
 edition = "2021"
-description = "abstraction over git using git2"
+description = "yggit test library"
 license = "MIT AND Apache-2.0"
 documentation = "https://github.com/Pilou97/yggit"
 homepage = "https://github.com/Pilou97/yggit"
@@ -13,11 +13,7 @@ categories = ["cli"]
 
 [dependencies]
 git2 = { workspace = true }
-thiserror = { workspace = true }
-auth-git2 = { workspace = true }
-
-[dev-dependencies]
-yggit-test = { path = "../yggit-test" }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

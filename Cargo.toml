@@ -5,7 +5,7 @@ members = [
     "crates/yggit-core",
     "crates/yggit-db",
     "crates/yggit-git",
-    "crates/yggit-parser",
+    "crates/yggit-parser", "crates/yggit-test",
     "crates/yggit-ui",
 ]
 resolver = "3"

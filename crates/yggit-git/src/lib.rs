@@ -332,153 +332,39 @@ impl Git for GitClient<'_> {
 #[cfg(test)]
 mod tests {
     use crate::{Git, GitClient, GitError};
-    use git2::Repository;
-    use std::io::Write;
-    use std::process::Command;
-    use std::{fs::File, path::Path};
-    use tempfile::TempDir;
-
-    macro_rules! assert_cmd {
-        ($expr:expr, $reason:expr) => {
-            let result = $expr.unwrap();
-            let stderr =
-                String::from_utf8(result.stderr).unwrap_or("Error when parsing stderr".into());
-            let stdout =
-                String::from_utf8(result.stdout).unwrap_or("Error when parsing stdout".into());
-
-            assert!(
-                result.status.success(),
-                "{}, stderr: \n{}\nstdout:\n {}",
-                $reason,
-                stderr,
-                stdout
-            );
-        };
-    }
-
-    fn add_and_commit(repo_path: &TempDir, filename: &str, content: &str) {
-        let filepath = Path::new(&repo_path.path()).join(filename);
-        let mut file = File::create(&filepath).unwrap();
-        writeln!(file, "{}", content).unwrap();
-
-        assert_cmd!(
-            Command::new("git")
-                .current_dir(&repo_path)
-                .arg("add")
-                .arg(filepath)
-                .output(),
-            "git add should work"
-        );
-
-        assert_cmd!(
-            Command::new("git")
-                .current_dir(&repo_path)
-                .arg("commit")
-                .arg("-m")
-                .arg("A new commit")
-                .output(),
-            "git commit should work"
-        );
-    }
-
-    fn add_identity(repo_path: &TempDir, email: &str, name: &str) {
-        // git config user.email "your.email@example.com"
-        assert_cmd!(
-            Command::new("git")
-                .current_dir(repo_path.as_ref())
-                .arg("config")
-                .arg("user.email")
-                .arg(email)
-                .output(),
-            "set email should work"
-        );
-
-        // git config user.name "Your Name"
-        assert_cmd!(
-            Command::new("git")
-                .current_dir(repo_path.as_ref())
-                .arg("config")
-                .arg("user.name")
-                .arg(name)
-                .output(),
-            "set name should work"
-        );
-    }
-
-    fn init_repo() -> (Repository, TempDir, TempDir) {
-        let mut bare_dir =
-            TempDir::with_suffix(".git").expect("should be able to create bare folder");
-        bare_dir.disable_cleanup(true);
-        assert_cmd!(
-            Command::new("git")
-                .current_dir(bare_dir.as_ref())
-                .arg("init")
-                .arg("--initial-branch")
-                .arg("main")
-                .arg("--bare")
-                .output(),
-            "git init bare should work"
-        );
-
-        let mut cloned_dir = TempDir::new().expect("should be able to create cloned folder");
-        cloned_dir.disable_cleanup(true);
-
-        assert_cmd!(
-            Command::new("git")
-                .arg("clone")
-                .arg(bare_dir.as_ref())
-                .arg(cloned_dir.as_ref())
-                .output(),
-            "git clone should work"
-        );
-
-        add_identity(&cloned_dir, "example@example.com", "Bob");
-
-        add_and_commit(&cloned_dir, "README.md", "# My Project");
-
-        assert_cmd!(
-            Command::new("git")
-                .current_dir(&cloned_dir)
-                .arg("push")
-                .output(),
-            "git push should work"
-        );
-
-        let repository = Repository::discover(&cloned_dir).unwrap();
-        (repository, bare_dir, cloned_dir)
-    }
+    use yggit_test::TempRepository;
 
     #[test]
     fn test_main_branch() {
-        let (repository, _, _) = init_repo();
-        let git = GitClient::new(&repository);
+        let repository = TempRepository::new();
+        repository.set_identity("Bob", "example@example.com");
+        let git = GitClient::new(repository.as_ref());
         assert_eq!(git.main().unwrap(), "main");
     }
 
     #[test]
     fn test_list_commits() {
-        let (repository, _, cloned_dir) = init_repo();
-        let git = GitClient::new(&repository);
+        let repository = TempRepository::new();
+        repository.set_identity("Bob", "example@example.com");
+        repository.add_file("README.md", "# My Project");
+        repository.commit("a cool commit name");
 
-        assert_cmd!(
-            Command::new("git")
-                .current_dir(&cloned_dir)
-                .arg("checkout")
-                .arg("-b")
-                .arg("feat")
-                .output(),
-            "git checkout should work"
-        );
+        repository.checkout_b("feat");
+        repository.add_file("README.md", "# My Second Project");
+        repository.commit("a cool commit name");
 
-        add_and_commit(&cloned_dir, "README.md", "# My Project 2");
-
+        let git = GitClient::new(repository.as_ref());
         git.list_commits("main").expect("to work");
     }
 
     #[test]
     fn test_list_commits_unknown_branch() {
-        let (repository, _, _) = init_repo();
-        let git = GitClient::new(&repository);
+        let repository = TempRepository::new();
+        repository.set_identity("Bob", "example@example.com");
+        repository.add_file("README.md", "# My Project 2");
+        repository.commit("a cool commit name");
+
+        let git = GitClient::new(repository.as_ref());
         let Err(GitError::BranchNotFound(branch_name)) = git.list_commits("whouhouhou") else {
             panic!("expecting an error")
         };
@@ -487,8 +373,12 @@ mod tests {
 
     #[test]
     fn test_list_commits_empty_branch() {
-        let (repository, _, _) = init_repo();
-        let git = GitClient::new(&repository);
+        let repository = TempRepository::new();
+        repository.set_identity("Bob", "example@example.com");
+        repository.add_file("README.md", "# My Project 2");
+        repository.commit("a cool commit name");
+
+        let git = GitClient::new(repository.as_ref());
         let commits = git.list_commits("main").expect("it should be listable");
         assert_eq!(commits.len(), 0)
     }

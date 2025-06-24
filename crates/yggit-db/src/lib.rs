@@ -124,39 +124,20 @@ impl Database for GitDatabase<'_> {}
 #[cfg(test)]
 mod tests {
     use crate::{DatabaseDelete, DatabaseRead, DatabaseWrite, GitDatabase};
-    use git2::{Repository, Signature};
-    use std::io::Write;
-    use std::{fs::File, path::Path};
-    use tempfile::TempDir;
+    use yggit_test::TempRepository;
 
     #[test]
     fn test_get_note() {
-        // Let's create a repository and put a file in it
-        let bare_dir = TempDir::new().expect("directory should be created");
-        let _ = Repository::init_bare(&bare_dir).expect("repository should be created");
-
-        let tmp_dir = TempDir::new().expect("directory should be created");
-        let repo = Repository::clone(bare_dir.path().to_str().unwrap(), &tmp_dir).unwrap();
-
-        let filepath = Path::new(&tmp_dir.path()).join("README.md");
-        let mut file = File::create(&filepath).unwrap();
-        writeln!(file, "# My Project").unwrap();
-
-        let mut index = repo.index().expect("index should exists");
-        index.add_path(Path::new("README.md")).unwrap();
-        index.write().unwrap();
-
-        let tree_id = index.write_tree().unwrap();
-        let tree = repo.find_tree(tree_id).unwrap();
-
-        let sig = Signature::now("Your Name", "you@example.com").unwrap();
-
-        repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
-            .unwrap();
-
+        // Init the repository
+        let repository = TempRepository::new();
+        repository.set_identity("Bob", "example@example.com");
+        repository.add_file("README.md", "a cool readme");
+        repository.commit("a commit message");
+        let repo = repository.as_ref();
+        // Get the head commit
         let id = repo.head().unwrap().peel_to_commit().unwrap().id();
 
-        // Then we can do our stuff
+        // Test the db
         let database = GitDatabase::new(&repo, "My name".into(), "My email".into());
 
         assert!(database.read::<String>(&id, "hello").unwrap().is_none());

@@ -218,7 +218,7 @@ pub fn show(
 
     // Now the user should modify the todo (or not)
     let _todo = editor
-        .edit(todo, SHOW_FOOTER)
+        .no_edit(todo, SHOW_FOOTER)
         .map_err(CoreError::EditorError)?;
 
     Ok(())

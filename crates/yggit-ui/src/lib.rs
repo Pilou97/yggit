@@ -9,6 +9,8 @@ pub enum EditorError {
 
 pub trait Editor {
     fn edit(&self, content: String, footer: &'static str) -> Result<String, EditorError>;
+
+    fn no_edit(&self, content: String, footer: &'static str) -> Result<(), EditorError>;
 }
 
 pub struct GitEditor {
@@ -40,5 +42,10 @@ impl Editor for GitEditor {
         let content = std::fs::read_to_string(file_path)
             .map_err(|_| EditorError::CannotEdit("cannot read result from editor"))?;
         Ok(content)
+    }
+
+    fn no_edit(&self, content: String, footer: &'static str) -> Result<(), EditorError> {
+        println!("{}\n{}", content, footer);
+        Ok(())
     }
 }

@@ -1017,6 +1017,7 @@ version = "1.0.0"
 dependencies = [
  "auth-git2",
  "git2",
+ "tempfile",
  "thiserror",
 ]
 

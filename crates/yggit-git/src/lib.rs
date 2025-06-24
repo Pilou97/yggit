@@ -224,7 +224,7 @@ impl<'a> GitClient<'a> {
 
 impl Git for GitClient<'_> {
     fn main(&self) -> Result<String, GitError> {
-        if let Ok(head) = self.repository.find_reference("refs/remotes/origin/HEAD") {
+        if let Ok(head) = self.repository.find_reference("HEAD") {
             if let Some(target) = head.symbolic_target() {
                 if let Some(branch_name) = target.rsplit('/').next() {
                     return Ok(branch_name.to_string());
@@ -251,6 +251,10 @@ impl Git for GitClient<'_> {
             .get()
             .peel_to_commit()
             .map_err(|_| GitError::CommitOfBranchNotFound(until.to_string()))?;
+
+        if head == until_commit.id() {
+            return Ok(vec![]);
+        }
 
         // make sure until is a parent of HEAD
         if !self
@@ -327,31 +331,139 @@ impl Git for GitClient<'_> {
 
 #[cfg(test)]
 mod tests {
-    use git2::Repository;
-
     use crate::{Git, GitClient, GitError};
+    use git2::Repository;
+    use std::io::Write;
+    use std::process::Command;
+    use std::{fs::File, path::Path};
+    use tempfile::TempDir;
+
+    fn add_and_commit(repo_path: &TempDir, filename: &str, content: &str) {
+        let filepath = Path::new(&repo_path.path()).join(filename);
+        let mut file = File::create(&filepath).unwrap();
+        writeln!(file, "{}", content).unwrap();
+
+        assert!(
+            Command::new("git")
+                .current_dir(&repo_path)
+                .arg("add")
+                .arg(filepath)
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "git add should work"
+        );
+
+        assert!(
+            Command::new("git")
+                .current_dir(&repo_path)
+                .arg("commit")
+                .arg("-m")
+                .arg("A new commit")
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "git commit should work"
+        );
+    }
+
+    fn init_repo() -> (Repository, TempDir, TempDir) {
+        let mut bare_dir =
+            TempDir::with_suffix(".git").expect("should be able to create bare folder");
+        bare_dir.disable_cleanup(true);
+        assert!(
+            Command::new("git")
+                .current_dir(bare_dir.as_ref())
+                .arg("init")
+                .arg("--initial-branch")
+                .arg("main")
+                .arg("--bare")
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "git init bare should work"
+        );
+
+        let mut cloned_dir = TempDir::new().expect("should be able to create cloned folder");
+        cloned_dir.disable_cleanup(true);
+
+        assert!(
+            Command::new("git")
+                .arg("clone")
+                .arg(bare_dir.as_ref())
+                .arg(cloned_dir.as_ref())
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "git clone should work"
+        );
+
+        add_and_commit(&cloned_dir, "README.md", "# My Project");
+
+        assert!(
+            Command::new("git")
+                .current_dir(&cloned_dir)
+                .arg("push")
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "git push should work"
+        );
+
+        let repository = Repository::discover(&cloned_dir).unwrap();
+        (repository, bare_dir, cloned_dir)
+    }
 
     #[test]
     fn test_main_branch() {
-        let repository = Repository::discover(".").unwrap();
+        let (repository, _, _) = init_repo();
         let git = GitClient::new(&repository);
         assert_eq!(git.main().unwrap(), "main");
     }
 
     #[test]
     fn test_list_commits() {
-        let repository = Repository::discover(".").unwrap();
+        let (repository, _, cloned_dir) = init_repo();
         let git = GitClient::new(&repository);
+
+        assert!(
+            Command::new("git")
+                .current_dir(&cloned_dir)
+                .arg("checkout")
+                .arg("-b")
+                .arg("feat")
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "git checkout should work"
+        );
+
+        add_and_commit(&cloned_dir, "README.md", "# My Project 2");
+
         git.list_commits("main").expect("to work");
     }
 
     #[test]
     fn test_list_commits_unknown_branch() {
-        let repository = Repository::discover(".").unwrap();
+        let (repository, _, _) = init_repo();
         let git = GitClient::new(&repository);
         let Err(GitError::BranchNotFound(branch_name)) = git.list_commits("whouhouhou") else {
             panic!("expecting an error")
         };
         assert_eq!(branch_name, "whouhouhou")
+    }
+
+    #[test]
+    fn test_list_commits_empty_branch() {
+        let (repository, _, _) = init_repo();
+        let git = GitClient::new(&repository);
+        let commits = git.list_commits("main").expect("it should be listable");
+        assert_eq!(commits.len(), 0)
     }
 }

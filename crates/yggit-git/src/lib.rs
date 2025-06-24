@@ -338,63 +338,69 @@ mod tests {
     use std::{fs::File, path::Path};
     use tempfile::TempDir;
 
+    macro_rules! assert_cmd {
+        ($expr:expr, $reason:expr) => {
+            let result = $expr.unwrap();
+            let stderr =
+                String::from_utf8(result.stderr).unwrap_or("Error when parsing stderr".into());
+            let stdout =
+                String::from_utf8(result.stdout).unwrap_or("Error when parsing stdout".into());
+
+            assert!(
+                result.status.success(),
+                "{}, stderr: \n{}\nstdout:\n {}",
+                $reason,
+                stderr,
+                stdout
+            );
+        };
+    }
+
     fn add_and_commit(repo_path: &TempDir, filename: &str, content: &str) {
         let filepath = Path::new(&repo_path.path()).join(filename);
         let mut file = File::create(&filepath).unwrap();
         writeln!(file, "{}", content).unwrap();
 
-        assert!(
+        assert_cmd!(
             Command::new("git")
                 .current_dir(&repo_path)
                 .arg("add")
                 .arg(filepath)
-                .output()
-                .unwrap()
-                .status
-                .success(),
+                .output(),
             "git add should work"
         );
 
-        assert!(
+        assert_cmd!(
             Command::new("git")
                 .current_dir(&repo_path)
                 .arg("commit")
                 .arg("-m")
                 .arg("A new commit")
-                .output()
-                .unwrap()
-                .status
-                .success(),
+                .output(),
             "git commit should work"
         );
     }
 
     fn add_identity(repo_path: &TempDir, email: &str, name: &str) {
         // git config user.email "your.email@example.com"
-        assert!(
+        assert_cmd!(
             Command::new("git")
                 .current_dir(repo_path.as_ref())
                 .arg("config")
                 .arg("user.email")
                 .arg(email)
-                .output()
-                .unwrap()
-                .status
-                .success(),
+                .output(),
             "set email should work"
         );
 
         // git config user.name "Your Name"
-        assert!(
+        assert_cmd!(
             Command::new("git")
                 .current_dir(repo_path.as_ref())
                 .arg("config")
                 .arg("user.name")
                 .arg(name)
-                .output()
-                .unwrap()
-                .status
-                .success(),
+                .output(),
             "set name should work"
         );
     }
@@ -403,32 +409,26 @@ mod tests {
         let mut bare_dir =
             TempDir::with_suffix(".git").expect("should be able to create bare folder");
         bare_dir.disable_cleanup(true);
-        assert!(
+        assert_cmd!(
             Command::new("git")
                 .current_dir(bare_dir.as_ref())
                 .arg("init")
                 .arg("--initial-branch")
                 .arg("main")
                 .arg("--bare")
-                .output()
-                .unwrap()
-                .status
-                .success(),
+                .output(),
             "git init bare should work"
         );
 
         let mut cloned_dir = TempDir::new().expect("should be able to create cloned folder");
         cloned_dir.disable_cleanup(true);
 
-        assert!(
+        assert_cmd!(
             Command::new("git")
                 .arg("clone")
                 .arg(bare_dir.as_ref())
                 .arg(cloned_dir.as_ref())
-                .output()
-                .unwrap()
-                .status
-                .success(),
+                .output(),
             "git clone should work"
         );
 
@@ -436,14 +436,11 @@ mod tests {
 
         add_and_commit(&cloned_dir, "README.md", "# My Project");
 
-        assert!(
+        assert_cmd!(
             Command::new("git")
                 .current_dir(&cloned_dir)
                 .arg("push")
-                .output()
-                .unwrap()
-                .status
-                .success(),
+                .output(),
             "git push should work"
         );
 
@@ -463,16 +460,13 @@ mod tests {
         let (repository, _, cloned_dir) = init_repo();
         let git = GitClient::new(&repository);
 
-        assert!(
+        assert_cmd!(
             Command::new("git")
                 .current_dir(&cloned_dir)
                 .arg("checkout")
                 .arg("-b")
                 .arg("feat")
-                .output()
-                .unwrap()
-                .status
-                .success(),
+                .output(),
             "git checkout should work"
         );
 

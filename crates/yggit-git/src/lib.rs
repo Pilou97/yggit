@@ -369,6 +369,36 @@ mod tests {
         );
     }
 
+    fn add_identity(repo_path: &TempDir, email: &str, name: &str) {
+        // git config user.email "your.email@example.com"
+        assert!(
+            Command::new("git")
+                .current_dir(repo_path.as_ref())
+                .arg("config")
+                .arg("user.email")
+                .arg(email)
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "set email should work"
+        );
+
+        // git config user.name "Your Name"
+        assert!(
+            Command::new("git")
+                .current_dir(repo_path.as_ref())
+                .arg("config")
+                .arg("user.name")
+                .arg(name)
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "set name should work"
+        );
+    }
+
     fn init_repo() -> (Repository, TempDir, TempDir) {
         let mut bare_dir =
             TempDir::with_suffix(".git").expect("should be able to create bare folder");
@@ -401,6 +431,8 @@ mod tests {
                 .success(),
             "git clone should work"
         );
+
+        add_identity(&cloned_dir, "example@example.com", "Bob");
 
         add_and_commit(&cloned_dir, "README.md", "# My Project");
 

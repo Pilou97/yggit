@@ -333,21 +333,21 @@ mod tests {
 
     #[test]
     fn test_main_branch() {
-        let repository = Repository::open("../../").unwrap();
+        let repository = Repository::discover(".").unwrap();
         let git = GitClient::new(&repository);
         assert_eq!(git.main().unwrap(), "main");
     }
 
     #[test]
     fn test_list_commits() {
-        let repository = Repository::open("../../").unwrap();
+        let repository = Repository::discover(".").unwrap();
         let git = GitClient::new(&repository);
         git.list_commits("main").expect("to work");
     }
 
     #[test]
     fn test_list_commits_unknown_branch() {
-        let repository = Repository::open("../../").unwrap();
+        let repository = Repository::discover(".").unwrap();
         let git = GitClient::new(&repository);
         let Err(GitError::BranchNotFound(branch_name)) = git.list_commits("whouhouhou") else {
             panic!("expecting an error")

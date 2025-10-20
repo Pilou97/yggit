@@ -61,7 +61,7 @@ impl Git {
     /// If main exists it will be returned as the main branch
     /// If main does not exist, master will be returned as the main branch
     pub fn main_branch(&self) -> Option<Branch> {
-        let branches = ["main", "master"];
+        let branches = ["next", "main", "master"];
 
         for branch in branches {
             let branch = self.repository.find_branch(branch, BranchType::Local);
